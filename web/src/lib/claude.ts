@@ -1,10 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk"
 import { UserPreferences } from "./types"
-
-export const anthropic = new Anthropic({
-  authToken: process.env.ANTHROPIC_API_KEY,
-  baseURL: process.env.ANTHROPIC_BASE_URL,
-})
 
 export function buildPlanPrompt(prefs: UserPreferences): string {
   return `你是一位专业的旅行规划师。请根据以下信息，生成一份详细的旅行规划。
