@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import { UserPreferences } from "./types"
 
 export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  authToken: process.env.ANTHROPIC_API_KEY,
   baseURL: process.env.ANTHROPIC_BASE_URL,
 })
 
