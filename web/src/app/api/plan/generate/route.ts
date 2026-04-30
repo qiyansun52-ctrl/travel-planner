@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server"
-import { anthropic, buildPlanPrompt, buildAdjustmentPrompt } from "@/lib/claude"
+import { GoogleGenerativeAI } from "@google/generative-ai"
+import { buildPlanPrompt, buildAdjustmentPrompt } from "@/lib/claude"
 import { UserPreferences } from "@/lib/types"
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -15,37 +19,14 @@ export async function POST(req: NextRequest) {
       ? buildAdjustmentPrompt(currentPlan, adjustment)
       : buildPlanPrompt(preferences!)
 
-  const encoder = new TextEncoder()
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const response = await anthropic.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 4096,
-          messages: [{ role: "user", content: prompt }],
-        })
-
-        for await (const chunk of response) {
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(chunk.delta.text))
-          }
-        }
-
-        controller.close()
-      } catch (err) {
-        controller.error(err)
-      }
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
-    },
-  })
+  try {
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
+    return new Response(text, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    })
+  } catch (err) {
+    console.error("Gemini error:", err)
+    return new Response("生成失败，请重试", { status: 500 })
+  }
 }

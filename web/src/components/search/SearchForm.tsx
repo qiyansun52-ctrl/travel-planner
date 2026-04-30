@@ -1,20 +1,12 @@
 "use client"
 
-import Anthropic from "@anthropic-ai/sdk"
 import { useState, FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { UserPreferences, TravelPlan } from "@/lib/types"
-import { buildPlanPrompt } from "@/lib/claude"
 import { savePlan } from "@/lib/planStore"
 import { Button } from "@/components/ui/Button"
 import { TextArea } from "@/components/ui/TextArea"
 import { nanoid } from "nanoid"
-
-const client = new Anthropic({
-  authToken: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
-  baseURL: process.env.NEXT_PUBLIC_ANTHROPIC_BASE_URL,
-  dangerouslyAllowBrowser: true,
-})
 
 export function SearchForm() {
   const router = useRouter()
@@ -34,14 +26,15 @@ export function SearchForm() {
     setLoading(true)
 
     try {
-      const prompt = buildPlanPrompt(form)
-      const response = await client.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        messages: [{ role: "user", content: prompt }],
+      const res = await fetch("/api/plan/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: form }),
       })
 
-      const raw = response.content[0].type === "text" ? response.content[0].text : ""
+      if (!res.ok) throw new Error("生成失败，请重试")
+      const raw = await res.text()
+
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error("无法解析行程数据")
 
