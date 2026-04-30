@@ -1,8 +1,16 @@
 "use client"
 
+import Anthropic from "@anthropic-ai/sdk"
 import { useState, useCallback } from "react"
 import { TravelPlan, ChatMessage } from "@/lib/types"
+import { buildAdjustmentPrompt } from "@/lib/claude"
 import { savePlan } from "@/lib/planStore"
+
+const client = new Anthropic({
+  authToken: process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY,
+  baseURL: process.env.NEXT_PUBLIC_ANTHROPIC_BASE_URL,
+  dangerouslyAllowBrowser: true,
+})
 
 export function usePlan(initialPlan: TravelPlan) {
   const [plan, setPlan] = useState<TravelPlan>(initialPlan)
@@ -26,27 +34,14 @@ export function usePlan(initialPlan: TravelPlan) {
       setIsGenerating(true)
 
       try {
-        const res = await fetch("/api/plan/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentPlan: JSON.stringify(plan.days),
-            adjustment: userMessage,
-          }),
+        const prompt = buildAdjustmentPrompt(JSON.stringify(plan.days), userMessage)
+        const response = await client.messages.create({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          messages: [{ role: "user", content: prompt }],
         })
 
-        if (!res.body) throw new Error("无响应")
-
-        const reader = res.body.getReader()
-        const decoder = new TextDecoder()
-        let raw = ""
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          raw += decoder.decode(value, { stream: true })
-        }
-
+        const raw = response.content[0].type === "text" ? response.content[0].text : ""
         const jsonMatch = raw.match(/\{[\s\S]*\}/)
         if (!jsonMatch) throw new Error("无法解析调整结果")
 
