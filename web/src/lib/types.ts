@@ -1,28 +1,46 @@
 export interface UserPreferences {
   destination: string
   departureCity: string
-  departureDate: string      // ISO date string "2026-05-10"
+  departureDate: string
   days: number
-  totalBudget: number        // CNY
-  accommodationDescription: string   // free text e.g. "森林小木屋，有壁炉"
-  experienceDescription: string      // free text e.g. "当地人才知道的小馆子"
+  totalBudget: number
+  accommodationDescription: string
+  experienceDescription: string
+}
+
+export type CardSection = "experience" | "transport" | "food"
+
+export interface AttractionCard {
+  id: string
+  name: string
+  section: CardSection
+  description: string
+  estimatedCost: string   // e.g. "¥50–100" or "免费"
+  imageUrl: string        // may be empty string — UI shows emoji fallback
+  tags: string[]
+}
+
+export interface DiscoverSections {
+  experience: AttractionCard[]
+  transport: AttractionCard[]
+  food: AttractionCard[]
 }
 
 export interface Activity {
   id: string
-  time: string               // "09:00"
-  endTime?: string           // "11:00"
+  time: string
+  endTime?: string
   place: string
   description: string
   type: "attraction" | "food" | "transport" | "hotel" | "free"
-  estimatedCost?: number     // CNY
+  estimatedCost?: number
   tips?: string
 }
 
 export interface DayPlan {
   day: number
-  date: string               // "2026-05-10"
-  title: string              // e.g. "抵达 + 豫园探索"
+  date: string
+  title: string
   activities: Activity[]
   totalCost: number
 }
@@ -39,6 +57,7 @@ export interface BudgetBreakdown {
 export interface TravelPlan {
   id: string
   preferences: UserPreferences
+  selectedAttractions: AttractionCard[]
   days: DayPlan[]
   budget: BudgetBreakdown
   tips: string[]
