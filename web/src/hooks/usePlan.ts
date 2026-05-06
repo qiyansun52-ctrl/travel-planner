@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { TravelPlan, ChatMessage } from "@/lib/types"
 import { savePlan } from "@/lib/planStore"
+import { generatePlan } from "@/lib/apiClient"
 
 export function usePlan(initialPlan: TravelPlan) {
   const [plan, setPlan] = useState<TravelPlan>(initialPlan)
@@ -31,18 +32,11 @@ export function usePlan(initialPlan: TravelPlan) {
       setIsGenerating(true)
 
       try {
-        const res = await fetch("/api/plan/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            currentPlan: JSON.stringify(plan.days),
-            adjustment: userMessage,
-            selectedAttractions: plan.selectedAttractions,
-          }),
+        const raw = await generatePlan({
+          currentPlan: JSON.stringify(plan.days),
+          adjustment: userMessage,
+          selectedAttractions: plan.selectedAttractions,
         })
-
-        if (!res.ok) throw new Error("调整失败")
-        const raw = await res.text()
         const jsonMatch = raw.match(/\{[\s\S]*\}/)
         if (!jsonMatch) throw new Error("无法解析调整结果")
 

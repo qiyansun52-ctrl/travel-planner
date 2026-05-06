@@ -11,6 +11,7 @@ import {
 import { SectionBlock } from "@/components/discover/SectionBlock"
 import { SelectionBar } from "@/components/discover/SelectionBar"
 import { savePlan } from "@/lib/planStore"
+import { discoverDestination, generatePlan } from "@/lib/apiClient"
 import { nanoid } from "nanoid"
 
 const LOADING_STEPS = [
@@ -54,14 +55,11 @@ export default function DiscoverPage() {
       setLoadingStep((prev) => Math.min(prev + 1, LOADING_STEPS.length - 1))
     }, 2000)
 
-    fetch(`/api/discover?destination=${encodeURIComponent(destination)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("搜索失败，请返回重试")
-        return res.json()
-      })
-      .then((data: { sections: DiscoverSections }) => {
-        setSections(data.sections)
-        sessionStorage.setItem(cacheKey, JSON.stringify(data.sections))
+    discoverDestination(destination)
+      .then((data) => {
+        const typed = data as { sections: DiscoverSections }
+        setSections(typed.sections)
+        sessionStorage.setItem(cacheKey, JSON.stringify(typed.sections))
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => {
@@ -93,13 +91,7 @@ export default function DiscoverPage() {
   async function handleGenerate(prefs: UserPreferences) {
     setGenerating(true)
     try {
-      const res = await fetch("/api/plan/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferences: prefs, selectedAttractions: selectedCards }),
-      })
-      if (!res.ok) throw new Error("生成失败，请重试")
-      const raw = await res.text()
+      const raw = await generatePlan({ preferences: prefs, selectedAttractions: selectedCards })
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error("无法解析行程数据")
       const planData = JSON.parse(jsonMatch[0])
