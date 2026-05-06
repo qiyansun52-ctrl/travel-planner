@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str
     tavily_api_key: str
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     host: str = "0.0.0.0"
     port: int = 8000
     cors_origins: str = "http://localhost:3000"
