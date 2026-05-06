@@ -1,23 +1,24 @@
 import { NextRequest } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
-import { buildPlanPrompt, buildAdjustmentPrompt } from "@/lib/claude"
-import { UserPreferences } from "@/lib/types"
+import { buildPlanPromptWithAttractions, buildAdjustmentPrompt } from "@/lib/claude"
+import { UserPreferences, AttractionCard } from "@/lib/types"
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { preferences, currentPlan, adjustment } = body as {
+  const { preferences, selectedAttractions, currentPlan, adjustment } = body as {
     preferences?: UserPreferences
+    selectedAttractions?: AttractionCard[]
     currentPlan?: string
     adjustment?: string
   }
 
   const prompt =
     currentPlan && adjustment
-      ? buildAdjustmentPrompt(currentPlan, adjustment)
-      : buildPlanPrompt(preferences!)
+      ? buildAdjustmentPrompt(currentPlan, adjustment, selectedAttractions ?? [])
+      : buildPlanPromptWithAttractions(preferences!, selectedAttractions ?? [])
 
   try {
     const result = await model.generateContent(prompt)
