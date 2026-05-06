@@ -16,32 +16,31 @@ export function buildSearchQueries(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function parseSearchItems(items: any[]): SearchItem[] {
-  return items.map((item) => ({
-    title: item.title ?? "",
-    snippet: item.snippet ?? "",
-    link: item.link ?? "",
-    imageUrl:
-      item.pagemap?.metatags?.[0]?.["og:image"] ??
-      item.pagemap?.csthumbnail?.[0]?.src ??
-      "",
+export function parseSearchItems(results: any[]): SearchItem[] {
+  return results.map((r) => ({
+    title: r.title ?? "",
+    snippet: r.content ?? "",
+    link: r.url ?? "",
+    imageUrl: "",
   }))
 }
 
-export async function searchGoogle(
+export async function searchTavily(
   query: string,
-  apiKey: string,
-  cx: string
+  apiKey: string
 ): Promise<SearchItem[]> {
-  const url = new URL("https://www.googleapis.com/customsearch/v1")
-  url.searchParams.set("key", apiKey)
-  url.searchParams.set("cx", cx)
-  url.searchParams.set("q", query)
-  url.searchParams.set("num", "8")
-  url.searchParams.set("lr", "lang_zh-CN")
-
-  const res = await fetch(url.toString())
-  if (!res.ok) throw new Error(`Google CSE error: ${res.status}`)
+  const res = await fetch("https://api.tavily.com/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: apiKey,
+      query,
+      search_depth: "basic",
+      max_results: 8,
+      include_answer: false,
+    }),
+  })
+  if (!res.ok) throw new Error(`Tavily error: ${res.status}`)
   const data = await res.json()
-  return parseSearchItems(data.items ?? [])
+  return parseSearchItems(data.results ?? [])
 }

@@ -28,41 +28,32 @@ describe("buildSearchQueries", () => {
 })
 
 describe("parseSearchItems", () => {
-  it("extracts title, snippet, link, and og:image", () => {
-    const mockItems = [
+  it("extracts title, snippet, and link from Tavily result format", () => {
+    const mockResults = [
       {
         title: "外滩夜景攻略",
-        snippet: "上海最著名的景点之一",
-        link: "https://example.com",
-        pagemap: {
-          metatags: [{ "og:image": "https://example.com/img.jpg" }],
-        },
+        content: "上海最著名的景点之一",
+        url: "https://example.com",
       },
     ]
-    const result = parseSearchItems(mockItems)
+    const result = parseSearchItems(mockResults)
     expect(result).toHaveLength(1)
     expect(result[0].title).toBe("外滩夜景攻略")
     expect(result[0].snippet).toBe("上海最著名的景点之一")
     expect(result[0].link).toBe("https://example.com")
-    expect(result[0].imageUrl).toBe("https://example.com/img.jpg")
-  })
-
-  it("falls back to csthumbnail when og:image absent", () => {
-    const mockItems = [
-      {
-        title: "豫园",
-        snippet: "古典园林",
-        link: "https://x.com",
-        pagemap: { csthumbnail: [{ src: "https://x.com/thumb.jpg" }] },
-      },
-    ]
-    const result = parseSearchItems(mockItems)
-    expect(result[0].imageUrl).toBe("https://x.com/thumb.jpg")
-  })
-
-  it("returns empty imageUrl when pagemap is absent", () => {
-    const mockItems = [{ title: "南京路", snippet: "步行街", link: "https://x.com" }]
-    const result = parseSearchItems(mockItems)
     expect(result[0].imageUrl).toBe("")
+  })
+
+  it("handles missing fields gracefully", () => {
+    const mockResults = [{ title: "豫园" }]
+    const result = parseSearchItems(mockResults)
+    expect(result[0].title).toBe("豫园")
+    expect(result[0].snippet).toBe("")
+    expect(result[0].link).toBe("")
+    expect(result[0].imageUrl).toBe("")
+  })
+
+  it("returns empty array for empty input", () => {
+    expect(parseSearchItems([])).toHaveLength(0)
   })
 })

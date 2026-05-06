@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { buildDiscoverPrompt } from "@/lib/claude"
-import { searchGoogle, buildSearchQueries, SearchItem } from "@/lib/googleSearch"
+import { searchTavily, buildSearchQueries, SearchItem } from "@/lib/googleSearch"
 import { AttractionCard, DiscoverSections } from "@/lib/types"
 import { nanoid } from "nanoid"
 
@@ -12,20 +12,14 @@ type RawCard = Omit<AttractionCard, "id" | "imageUrl" | "section">
 
 function attachIds(
   cards: RawCard[],
-  section: AttractionCard["section"],
-  imageMap: Map<string, string>
+  section: AttractionCard["section"]
 ): AttractionCard[] {
-  return cards.map((card) => {
-    const matchKey = [...imageMap.keys()].find((k) =>
-      card.name.includes(k.slice(0, 6))
-    )
-    return {
-      ...card,
-      id: nanoid(),
-      section,
-      imageUrl: matchKey ? (imageMap.get(matchKey) ?? "") : "",
-    }
-  })
+  return cards.map((card) => ({
+    ...card,
+    id: nanoid(),
+    section,
+    imageUrl: "",
+  }))
 }
 
 export async function GET(req: NextRequest) {
@@ -34,27 +28,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "destination is required" }, { status: 400 })
   }
 
-  const apiKey = process.env.GOOGLE_CSE_KEY
-  const cx = process.env.GOOGLE_CSE_CX
+  const tavilyKey = process.env.TAVILY_API_KEY
   const [q1, q2, q3] = buildSearchQueries(destination)
 
   let experienceItems: SearchItem[] = []
   let transportItems: SearchItem[] = []
   let foodItems: SearchItem[] = []
 
-  if (apiKey && cx) {
+  if (tavilyKey) {
     const [r1, r2, r3] = await Promise.allSettled([
-      searchGoogle(q1, apiKey, cx),
-      searchGoogle(q2, apiKey, cx),
-      searchGoogle(q3, apiKey, cx),
+      searchTavily(q1, tavilyKey),
+      searchTavily(q2, tavilyKey),
+      searchTavily(q3, tavilyKey),
     ])
     if (r1.status === "fulfilled") experienceItems = r1.value
     if (r2.status === "fulfilled") transportItems = r2.value
     if (r3.status === "fulfilled") foodItems = r3.value
   }
-
-  const allItems = [...experienceItems, ...transportItems, ...foodItems]
-  const imageMap = new Map(allItems.map((item) => [item.title, item.imageUrl]))
 
   const prompt = buildDiscoverPrompt(destination, experienceItems, transportItems, foodItems)
 
@@ -72,9 +62,9 @@ export async function GET(req: NextRequest) {
     }
 
     const sections: DiscoverSections = {
-      experience: attachIds(parsed.experience ?? [], "experience", imageMap),
-      transport: attachIds(parsed.transport ?? [], "transport", imageMap),
-      food: attachIds(parsed.food ?? [], "food", imageMap),
+      experience: attachIds(parsed.experience ?? [], "experience"),
+      transport: attachIds(parsed.transport ?? [], "transport"),
+      food: attachIds(parsed.food ?? [], "food"),
     }
 
     return NextResponse.json({ sections })
