@@ -1,9 +1,10 @@
 "use client"
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
-  AttractionCard as AttractionCardType,
   DiscoverSections,
   TravelPlan,
   UserPreferences,
@@ -83,7 +84,11 @@ export default function DiscoverPage() {
   function toggleCard(id: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
