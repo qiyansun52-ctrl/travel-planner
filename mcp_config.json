@@ -1,0 +1,28 @@
+{
+  "_说明": "这是MCP配置模板，将内容合并到 ~/.claude/settings.json 的 mcpServers 字段",
+  "_步骤": [
+    "1. 申请高德API Key: https://lbs.amap.com/ → 控制台 → 创建应用 → Web服务",
+    "2. 申请ModelScope账号: https://modelscope.cn → 找到12306-mcp → 获取SSE链接",
+    "3. 运行 bash setup_mcp.sh 安装xhs-mcp",
+    "4. 获取小红书Cookie（见下方说明）",
+    "5. 将 YOUR_xxx 替换为真实值后，合并到 ~/.claude/settings.json"
+  ],
+  "mcpServers": {
+    "amap": {
+      "_说明": "高德地图 - 路线规划、POI搜索",
+      "url": "https://mcp.amap.com/sse?key=YOUR_AMAP_API_KEY"
+    },
+    "12306": {
+      "_说明": "12306火车票查询 - 从ModelScope获取你的专属SSE链接",
+      "url": "YOUR_MODELSCOPE_12306_SSE_URL"
+    },
+    "xhs": {
+      "_说明": "小红书笔记搜索 - 需要先运行 setup_mcp.sh",
+      "command": "uvx",
+      "args": ["xhs-mcp"],
+      "env": {
+        "XHS_COOKIE": "YOUR_XHS_COOKIE_HERE"
+      }
+    }
+  }
+}
