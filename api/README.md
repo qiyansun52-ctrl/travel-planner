@@ -84,6 +84,8 @@ Expected output:
 Smoke flow passed for session_...
 ```
 
+Set `PYTHON_BIN=/path/to/python` when your shell does not expose `python3`.
+
 ## Tests
 
 ```bash
