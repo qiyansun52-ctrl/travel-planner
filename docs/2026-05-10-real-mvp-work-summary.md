@@ -12,10 +12,11 @@
 - 真实浏览器流程跑通：首页 -> discovery -> preferences -> trips -> adjustment。
 - 离线发布门禁跑通：`make regression` 全绿。
 - 当前主流程会先用 Tavily 搜索 grounding，再把搜索摘要交给 Gemini discovery agent 生成结构化结果。
+- Plan15 已把 AMap/Mapbox provider registry 接入 discovery card place enrichment；本机地图 key 为空时会自动跳过并保留 LLM place。
 
 当前分支：`feature/mvp-web-app`
 
-当前状态：真实 provider 稳定性修复已提交；Plan14 已把 Tavily grounding 接入 discovery 主流程并通过真实 smoke 与完整 regression。
+当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程，并通过真实 smoke 与完整 regression。
 
 ## 今天你完成了什么
 
@@ -65,6 +66,15 @@ first_url_set=True
 ```
 
 说明 Tavily key 和 adapter 可用。Plan14 进一步把 Tavily 搜索结果接进 discovery prompt，并把 Tavily 来源合并进 `source_notes`。
+
+### 3.5 接入地图地点 enrichment
+
+Plan15 已把 `TravelDataProviderRegistry.search_places()` 接进 discovery agent：
+
+- 有 `AMAP_API_KEY` 或 `MAPBOX_ACCESS_TOKEN` 时，会为每张 discovery card 用目的地 + card name 做一次受限 place search。
+- 搜到真实 `NormalizedPlace` 时，会替换 LLM 生成或缺失的 `card.place`。
+- 地图 provider 缺 key、失败或无结果时，不阻断 discovery，会保留 LLM place 并继续。
+- 本机当前 `AMAP_API_KEY` 和 `MAPBOX_ACCESS_TOKEN` 为空，所以真实地图 API 还没有外部 smoke；代码路径已用 fake registry 和完整 regression 验收。
 
 ### 4. 修掉真实模式暴露的问题
 
@@ -119,7 +129,7 @@ make regression
 - web lint passed
 - web unit tests: `12 passed`
 - web build passed
-- API pytest: `340 passed, 1 warning`
+- API pytest: `345 passed, 1 warning`
 - API ruff passed
 - fixture smoke passed
 - Playwright e2e: `4 passed`
@@ -136,10 +146,11 @@ make regression
 ### 进一步跑通
 
 - Tavily search provider：adapter 已真实跑通，key 可用；Plan14 已把 Tavily grounding 接入 discovery 主流程。
+- Map place enrichment：Plan15 已接入 discovery 主流程；有 AMap/Mapbox key 时会用 provider registry 为 discovery cards 解析真实 `NormalizedPlace`，失败时保留 LLM place 并继续。
 
 ### 还没有产品化
 
-- AMap / Mapbox：env key 还未配置，主流程没有真实地图 provider 验收。
+- AMap / Mapbox：env key 还未配置，所以还没有真实地图 provider 外部 smoke；当前完成的是主流程接线和 graceful fallback。
 - 图片：`example.com` 占位图片已在 discovery normalization 中过滤；后续还需要真实图片/provider 或更完整的图片策略。
 - 生产环境：还没有部署、监控、限流、成本保护、用户数据隔离。
 
@@ -172,6 +183,8 @@ make regression
 ### Agent / Graph 功能
 
 - Discovery agent。
+- Discovery Tavily grounding。
+- Discovery map place enrichment。
 - Stay recommendation node。
 - Transport recommendation node。
 - Planner node。
@@ -247,16 +260,29 @@ Plan14: Tavily-Backed Discovery Grounding
 - 为 Tavily 失败设计 graceful fallback。
 - 加 fixture 和真实 smoke 验收。
 
+Plan15 也已完成主流程接线：
+
+```text
+Plan15: Map Place Enrichment
+```
+
+已完成：
+
+- Discovery card 通过 provider registry 解析真实 `NormalizedPlace`。
+- 缺地图 key 或 provider 失败时 graceful fallback。
+- 最新完整 regression 全绿。
+
 之后建议继续做：
 
-- Plan15: AMap / Mapbox real map enrichment。
-- Plan16: production readiness，包括部署、限流、日志、成本控制、错误监控。
-- Plan17: product polish，包括真实图片、加载体验、保存/恢复、中文 UI 完整化。
+- Plan16: real map key smoke + route-duration enrichment。
+- Plan17: production readiness，包括部署、限流、日志、成本控制、错误监控。
+- Plan18: product polish，包括真实图片、加载体验、保存/恢复、中文 UI 完整化。
 
 ## 当前风险
 
 - 密钥已在聊天里暴露过，必须轮换。
 - Tavily 已进入主 discovery graph，但搜索摘要到 itinerary 质量仍需要真实多城市样本持续观察。
+- 地图 enrichment 已接入，但本机还没配置 AMap/Mapbox key，因此真实地图外部调用未验收。
 - 真实 Gemini 输出仍需要长期观察，虽然今天已经加了 schema、净化和重试。
 - 当前 session persistence 是本地文件，不适合多人生产使用。
 - 没有认证、限流、额度保护。
@@ -267,6 +293,6 @@ Plan14: Tavily-Backed Discovery Grounding
 - 没有 dev server 残留。
 - 本地 `.env` 不会被提交。
 - 真实 provider 稳定性修复已提交。
-- 完整 regression 已通过，包括 Plan14 后的最新一轮：API `343 passed`、web unit `12 passed`、Playwright `4 passed`。
-- 真实 Gemini/Tavily 验收已通过；Plan14 后的真实 API smoke 也已通过，并确认 discovery `source_notes` 包含 Tavily URL。
+- 完整 regression 已通过，包括 Plan15 后的最新一轮：API `345 passed`、web unit `12 passed`、Playwright `4 passed`。
+- 真实 Gemini/Tavily 验收已通过；Plan15 后的真实 API smoke 也已通过。地图 key 为空，所以地图 enrichment 路径本次验证的是自动跳过和兜底。
 - 项目现在可以被称为“真实可用 MVP”，但还不是“可长期给真实用户使用的生产产品”。

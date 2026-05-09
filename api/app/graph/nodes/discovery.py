@@ -28,8 +28,15 @@ from app.providers.fixtures import (
     fixture_provider_for_country,
     fixture_source_note,
 )
+from app.providers.registry import TravelDataProviderRegistry, create_default_provider_registry
 from app.providers.search.tavily import TavilySearchProvider, build_search_queries
-from app.providers.types import ProviderError, SearchProvider, SearchRequest, SearchResult
+from app.providers.types import (
+    PlaceSearchRequest,
+    ProviderError,
+    SearchProvider,
+    SearchRequest,
+    SearchResult,
+)
 
 
 def compute_enrichment_status(card: DiscoveryCard) -> Literal["complete", "partial", "minimal"]:
@@ -46,6 +53,7 @@ async def run_discovery_agent(
     fixture_mode: bool = False,
     llm_provider: LLMProvider | None = None,
     search_provider: SearchProvider | None = None,
+    map_registry: TravelDataProviderRegistry | None = None,
     cost_logger: LLMCostLogger | None = None,
 ) -> DiscoveryOutput:
     if fixture_mode or not _has_llm_api_key():
@@ -61,9 +69,10 @@ async def run_discovery_agent(
         provider=llm_provider,
         cost_logger=cost_logger,
     )
+    enriched_cards = await _enrich_card_places(output.cards, session, map_registry)
     return output.model_copy(
         update={
-            "cards": [_normalize_discovery_card(card, session) for card in output.cards],
+            "cards": [_normalize_discovery_card(card, session) for card in enriched_cards],
             "source_notes": _merge_source_notes(
                 _source_notes_from_search_results(search_results),
                 output.source_notes,
@@ -255,6 +264,55 @@ def _merge_source_notes(
         seen.add(key)
         merged.append(note)
     return merged
+
+
+async def _enrich_card_places(
+    cards: list[DiscoveryCard],
+    session: PlanningSession,
+    map_registry: TravelDataProviderRegistry | None,
+) -> list[DiscoveryCard]:
+    registry = map_registry or _default_map_registry()
+    if registry is None:
+        return cards
+
+    return await asyncio.gather(
+        *[_safe_enrich_card_place(card, session, registry) for card in cards],
+        return_exceptions=False,
+    )
+
+
+async def _safe_enrich_card_place(
+    card: DiscoveryCard,
+    session: PlanningSession,
+    registry: TravelDataProviderRegistry,
+) -> DiscoveryCard:
+    request = PlaceSearchRequest(
+        query=_place_search_query(card, session),
+        country_code=session.hard_constraints.destination_country_code,
+        limit=1,
+        category=card.category,
+    )
+    try:
+        places = await registry.search_places(request)
+    except Exception:
+        return card
+    if not places:
+        return card
+    return card.model_copy(update={"place": places[0]})
+
+
+def _place_search_query(card: DiscoveryCard, session: PlanningSession) -> str:
+    return f"{session.hard_constraints.destination_city} {card.name}".strip()
+
+
+def _default_map_registry() -> TravelDataProviderRegistry | None:
+    if not _has_map_provider_key():
+        return None
+    return create_default_provider_registry()
+
+
+def _has_map_provider_key() -> bool:
+    return bool(os.environ.get("AMAP_API_KEY") or os.environ.get("MAPBOX_ACCESS_TOKEN"))
 
 
 def _normalize_discovery_card(card: DiscoveryCard, session: PlanningSession) -> DiscoveryCard:

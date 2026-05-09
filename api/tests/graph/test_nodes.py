@@ -19,8 +19,14 @@ from app.graph.nodes.stay import run_stay_agent, run_stay_node
 from app.graph.nodes.transport import run_transport_agent, run_transport_node
 from app.graph.nodes.validator import run_validator_node
 from app.graph.state import PlanState, append_progress, graph_input_from_state, validate_graph_state
-from app.models.schemas import BudgetBand, DiscoveryOutput, SourceNote
-from app.providers.types import ProviderError, SearchRequest, SearchResult
+from app.models.schemas import (
+    BudgetBand,
+    Coordinate,
+    DiscoveryOutput,
+    NormalizedPlace,
+    SourceNote,
+)
+from app.providers.types import ProviderError, PlaceSearchRequest, SearchRequest, SearchResult
 from tests.graph import fixtures
 
 
@@ -54,12 +60,44 @@ class FailingSearchProvider:
         )
 
 
+class FakeMapRegistry:
+    def __init__(
+        self,
+        places_by_query: dict[str, list[NormalizedPlace]],
+        *,
+        fail: bool = False,
+    ) -> None:
+        self.places_by_query = places_by_query
+        self.fail = fail
+        self.requests: list[PlaceSearchRequest] = []
+
+    async def search_places(self, request: PlaceSearchRequest) -> list[NormalizedPlace]:
+        self.requests.append(request)
+        if self.fail:
+            raise RuntimeError("map search failed")
+        return self.places_by_query.get(request.query, [])
+
+
 def search_result(title: str, url: str, snippet: str) -> SearchResult:
     return SearchResult(
         title=title,
         url=url,
         snippet=snippet,
         source_note=SourceNote(provider="tavily", url=url, note="Tavily search result"),
+    )
+
+
+def map_place(
+    place_id: str = "amap:bund",
+    name: str = "The Bund",
+) -> NormalizedPlace:
+    return NormalizedPlace(
+        id=place_id,
+        name=name,
+        coordinate=Coordinate(lat=31.2403, lng=121.4906),
+        address="Zhongshan East 1st Road",
+        category="scenic_area",
+        provider="amap",
     )
 
 
@@ -273,6 +311,75 @@ async def test_run_discovery_agent_removes_placeholder_image_urls(monkeypatch) -
     result = await run_discovery_agent(fixtures.session(), search_provider=None)
 
     assert result.cards[0].image_url is None
+    assert result.cards[0].enrichment_status == "partial"
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_enriches_card_places_with_map_registry(
+    monkeypatch,
+) -> None:
+    recorded = {}
+    card = fixtures.discovery_card().model_copy(
+        update={
+            "name": "The Bund waterfront walk",
+            "place": None,
+            "image_url": None,
+            "enrichment_status": "minimal",
+        }
+    )
+    output_from_llm = fixtures.discovery_output().model_copy(update={"cards": [card]})
+    registry = FakeMapRegistry({"上海 The Bund waterfront walk": [map_place()]})
+
+    async def fake_generate_structured(**kwargs):
+        recorded.update(kwargs)
+        return output_from_llm
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        map_registry=registry,
+        search_provider=None,
+    )
+
+    assert recorded["label"] == "discovery_agent"
+    assert len(registry.requests) == 1
+    assert registry.requests[0].query == "上海 The Bund waterfront walk"
+    assert registry.requests[0].country_code == "CN"
+    assert registry.requests[0].limit == 1
+    assert registry.requests[0].category == "sightseeing"
+    assert result.cards[0].place == map_place()
+    assert result.cards[0].enrichment_status == "partial"
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_keeps_existing_place_when_map_enrichment_fails(
+    monkeypatch,
+) -> None:
+    card = fixtures.discovery_card().model_copy(
+        update={"place": fixtures.place("model_place", "Model place")}
+    )
+
+    async def fake_generate_structured(**_: object):
+        return fixtures.discovery_output().model_copy(update={"cards": [card]})
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        map_registry=FakeMapRegistry({}, fail=True),
+        search_provider=None,
+    )
+
+    assert result.cards[0].place == fixtures.place("model_place", "Model place")
     assert result.cards[0].enrichment_status == "partial"
 
 
