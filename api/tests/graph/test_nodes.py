@@ -217,6 +217,25 @@ async def test_run_planner_agent_falls_back_to_first_three_cards_when_none_selec
 
 
 @pytest.mark.asyncio
+async def test_run_planner_agent_prefers_selected_cards() -> None:
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+    )
+
+    card_refs = [
+        segment.card_ref
+        for day in itinerary.days
+        for segment in day.segments
+        if segment.card_ref
+    ]
+    assert set(card_refs) == {"disc_waterfront"}
+    assert "disc_museum" not in card_refs
+    assert "disc_garden" not in card_refs
+
+
+@pytest.mark.asyncio
 async def test_run_planner_agent_builds_required_segment_types() -> None:
     itinerary = await run_planner_agent(
         fixtures.session(),
