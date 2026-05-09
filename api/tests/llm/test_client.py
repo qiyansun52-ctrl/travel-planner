@@ -14,7 +14,6 @@ from pydantic import BaseModel, ConfigDict
 from app.llm.client import (
     LLMConfigurationError,
     LLMJsonParseError,
-    LLMProvider,
     LLMTimeoutError,
     generate_structured,
 )
