@@ -65,4 +65,4 @@ make smoke
 
 ## Planning Docs
 
-The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plan 1-9 are complete; Plan 10-12 are post-roadmap hardening passes for launch readiness, fixture smoke automation, and roadmap closure.
+The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plan 1-9 are complete; Plan 10-13 are post-roadmap hardening passes for launch readiness, fixture smoke automation, roadmap closure, and web dependency hygiene.

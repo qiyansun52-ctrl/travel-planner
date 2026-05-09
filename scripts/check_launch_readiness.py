@@ -139,7 +139,7 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "make smoke", failures, reason="root API smoke")
     require_contains(
         root_readme,
-        "Plan 1-9 are complete; Plan 10-12 are post-roadmap hardening passes",
+        "Plan 1-9 are complete; Plan 10-13 are post-roadmap hardening passes",
         failures,
         reason="root planning status",
     )
