@@ -6,6 +6,7 @@ must call this and never bypass to GeminiLLMProvider directly.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import time
@@ -194,7 +195,8 @@ class GeminiLLMProvider:
         except Exception as e:
             raise LLMNetworkError("LLM provider network failure", cause=e) from e
         finally:
-            await client.aio.aclose()
+            with contextlib.suppress(Exception):
+                await client.aio.aclose()
 
         text = (response.text or "").strip()
         if not text:

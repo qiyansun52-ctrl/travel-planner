@@ -17,6 +17,7 @@ from app.llm.client import (
     GeminiLLMProvider,
     LLMConfigurationError,
     LLMJsonParseError,
+    LLMNetworkError,
     LLMTimeoutError,
     generate_structured,
 )
@@ -266,3 +267,55 @@ async def test_gemini_generate_returns_json_and_closes_async_client(
         }
     ]
     assert closed["value"] is True
+
+
+async def test_gemini_generate_preserves_api_error_when_close_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeAPIError(Exception):
+        def __init__(self, message: str, *, code: int) -> None:
+            super().__init__(message)
+            self.code = code
+
+    class FakeModels:
+        async def generate_content(self, **_: object) -> SimpleNamespace:
+            raise FakeAPIError("provider unavailable", code=500)
+
+    class FakeAio:
+        def __init__(self) -> None:
+            self.models = FakeModels()
+
+        async def aclose(self) -> None:
+            raise RuntimeError("close failed")
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            self.api_key = api_key
+            self.aio = FakeAio()
+
+    def fake_generate_content_config(**kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(**kwargs)
+
+    google_module = ModuleType("google")
+    genai_module = ModuleType("google.genai")
+    errors_module = ModuleType("google.genai.errors")
+    types_module = ModuleType("google.genai.types")
+
+    genai_module.Client = FakeClient
+    errors_module.APIError = FakeAPIError
+    types_module.GenerateContentConfig = fake_generate_content_config
+    genai_module.errors = errors_module
+    genai_module.types = types_module
+    google_module.genai = genai_module
+
+    monkeypatch.setitem(sys.modules, "google", google_module)
+    monkeypatch.setitem(sys.modules, "google.genai", genai_module)
+    monkeypatch.setitem(sys.modules, "google.genai.errors", errors_module)
+    monkeypatch.setitem(sys.modules, "google.genai.types", types_module)
+
+    provider = GeminiLLMProvider(api_key="test-key", model="test-model")
+    with pytest.raises(LLMNetworkError) as exc_info:
+        await provider.generate(system="sys", user="usr", timeout_ms=1000)
+
+    assert exc_info.value.status == 500
+    assert str(exc_info.value) == "provider unavailable"
