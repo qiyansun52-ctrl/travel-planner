@@ -7,7 +7,20 @@ from typing import get_args
 
 import pytest
 
-from app.models.schemas import ConversationTurn, HardConstraints
+from app.models.schemas import (
+    AreaSummary,
+    BudgetBand,
+    BudgetSummary,
+    ConversationTurn,
+    DiscoveryState,
+    HardConstraints,
+    Itinerary,
+    Preference,
+    StayOption,
+    StayRecommendation,
+    TransportRecommendation,
+    ValidatorIssue,
+)
 from app.persistence import (
     ArchivedSessionMutationError,
     SessionNotFoundError,
@@ -207,3 +220,201 @@ def test_default_session_store_path_points_to_api_data_dir_without_env() -> None
     assert path.name == "sessions.json"
     assert path.parent.name == ".data"
     assert path.parent.parent.name == "api"
+
+
+def budget_band(basis: str = "per_trip") -> BudgetBand:
+    return BudgetBand(
+        currency="CNY",
+        low=100,
+        high=200,
+        confidence="medium",
+        basis=basis,
+    )
+
+
+def preferences() -> Preference:
+    return Preference(
+        area_vibe="central and walkable",
+        quiet_vs_lively="balanced",
+        stay_type="hotel",
+        willing_to_change_hotels=False,
+        intercity_transport_preference="rail",
+        early_departure_tolerance="medium",
+        transfer_tolerance="low",
+        pay_more_to_save_time=True,
+    )
+
+
+def stay_recommendation() -> StayRecommendation:
+    area = AreaSummary(
+        id="area_1",
+        name="People Square",
+        vibe_tags=["central"],
+        note="Central base",
+        center={"lat": 31.23, "lng": 121.47},
+    )
+    option = StayOption(
+        id="stay_primary",
+        area=area,
+        fit_reason="Short transfers",
+        price_band=budget_band(),
+        sample_hotels=[],
+    )
+    return StayRecommendation(
+        primary=option,
+        alternatives=[],
+        user_override_id=None,
+    )
+
+
+def transport_recommendation() -> TransportRecommendation:
+    band = budget_band()
+    return TransportRecommendation(
+        arrival={
+            "mode": "rail",
+            "duration_minutes": 300,
+            "cost_band": band,
+            "note": None,
+        },
+        departure={
+            "mode": "rail",
+            "duration_minutes": 300,
+            "cost_band": band,
+            "note": None,
+        },
+        intracity={
+            "primary_mode": "transit",
+            "daily_cost_band": budget_band("per_day"),
+            "note": None,
+        },
+        tradeoffs=[],
+    )
+
+
+def validator_issue() -> ValidatorIssue:
+    return ValidatorIssue(
+        code="DAY_OVERLOADED",
+        severity="warning",
+        scope={"type": "day", "day_index": 1},
+        message="Day 1 may feel dense.",
+        suggested_action="Move one stop.",
+    )
+
+
+def itinerary(session_id: str) -> Itinerary:
+    band = budget_band()
+    return Itinerary(
+        id="itinerary_1",
+        session_id=session_id,
+        days=[],
+        budget=BudgetSummary(
+            currency="CNY",
+            transport=band,
+            stay=band,
+            food=band,
+            attractions=band,
+            other=band,
+            total=band,
+            user_budget=5000,
+            overrun_flag=False,
+        ),
+        validator_issues=[],
+        version=1,
+    )
+
+
+async def test_updates_discovery_preferences_itinerary_and_conversation(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+
+    await repository.update_discovery(
+        session.session_id,
+        DiscoveryState(payload=None, selected_card_ids=["card_1"]),
+    )
+    await repository.update_preferences(session.session_id, preferences())
+    issue = validator_issue()
+    await repository.write_itinerary(
+        session.session_id,
+        itinerary(session.session_id),
+        [issue],
+    )
+    updated = await repository.append_conversation_turn(
+        session.session_id,
+        ConversationTurn(
+            id="turn_1",
+            raw_text="Make day two easier.",
+            classification=None,
+            created_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
+        ),
+    )
+
+    assert updated.discovery_state is not None
+    assert updated.discovery_state.selected_card_ids == ["card_1"]
+    assert updated.preferences is not None
+    assert updated.itinerary is not None
+    assert updated.itinerary.validator_issues == [issue]
+    assert updated.validator_issues == [issue]
+    assert len(updated.conversation_history) == 1
+
+
+async def test_last_write_wins_for_repeated_discovery_updates(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+
+    await repository.update_discovery(
+        session.session_id,
+        DiscoveryState(payload=None, selected_card_ids=["old_card"]),
+    )
+    updated = await repository.update_discovery(
+        session.session_id,
+        DiscoveryState(payload=None, selected_card_ids=["new_card"]),
+    )
+
+    assert updated.discovery_state is not None
+    assert updated.discovery_state.selected_card_ids == ["new_card"]
+
+
+async def test_writes_stay_transport_and_stay_override(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+
+    await repository.update_stay_recommendation(
+        session.session_id,
+        stay_recommendation(),
+    )
+    await repository.update_transport_recommendation(
+        session.session_id,
+        transport_recommendation(),
+    )
+    updated = await repository.update_stay_override(
+        session.session_id,
+        "stay_primary",
+    )
+
+    assert updated.stay_recommendation is not None
+    assert updated.stay_recommendation.user_override_id == "stay_primary"
+    assert updated.transport_recommendation is not None
+    assert updated.transport_recommendation.arrival.mode == "rail"
+
+
+async def test_stay_override_requires_stay_recommendation(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+
+    with pytest.raises(SessionStoreError, match="no stay recommendation"):
+        await repository.update_stay_override(session.session_id, "stay_primary")
+
+
+async def test_missing_session_mutation_raises_not_found(tmp_path: Path) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+
+    with pytest.raises(SessionNotFoundError, match="missing"):
+        await repository.update_preferences("missing", preferences())
