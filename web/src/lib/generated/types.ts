@@ -226,4 +226,3 @@ export interface ValidatorIssue {
   severity: "warning" | "error"
   suggested_action: string | null
 }
-

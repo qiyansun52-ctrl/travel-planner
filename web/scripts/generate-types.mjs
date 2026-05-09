@@ -74,8 +74,7 @@ const content = [
   "// Do not edit manually.",
   "",
   ...names.map((name) => emitDefinition(name, defs[name])),
-  "",
-].join("\n\n")
+].join("\n\n") + "\n"
 
 await mkdir(path.dirname(outputPath), { recursive: true })
 await writeFile(outputPath, content, "utf-8")
