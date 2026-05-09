@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import time
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Mapping
@@ -125,8 +126,8 @@ class FileSessionRepository:
         itinerary: Itinerary,
         validator_issues: list[ValidatorIssue],
     ) -> PlanningSession:
-        itinerary_with_issues = itinerary.model_copy(
-            update={"validator_issues": validator_issues}
+        itinerary_with_issues = _validate_itinerary_for_write(
+            itinerary.model_copy(update={"validator_issues": validator_issues})
         )
         return await self._update_active(
             session_id,
@@ -206,12 +207,14 @@ class FileSessionRepository:
             original = _require_session(store, session_id)
             _assert_active(original)
             now = _utc_now()
-            store[session_id] = original.model_copy(
-                update={
-                    "status": "archived",
-                    "snapshot_label": snapshot_label,
-                    "updated_at": now,
-                }
+            store[session_id] = _validate_session_for_write(
+                original.model_copy(
+                    update={
+                        "status": "archived",
+                        "snapshot_label": snapshot_label,
+                        "updated_at": now,
+                    }
+                )
             )
             fork = PlanningSession(
                 session_id=f"session_{uuid4()}",
@@ -242,6 +245,7 @@ class FileSessionRepository:
             updated = _touch(
                 session.model_copy(update={"snapshot_label": snapshot_label})
             )
+            updated = _validate_session_for_write(updated)
             store[session_id] = updated
             await self._write_store(store)
             return updated
@@ -256,6 +260,7 @@ class FileSessionRepository:
             session = _require_session(store, session_id)
             _assert_active(session)
             updated = _touch(updater(session))
+            updated = _validate_session_for_write(updated)
             store[session_id] = updated
             await self._write_store(store)
             return updated
@@ -373,6 +378,26 @@ def _utc_now() -> datetime:
 
 def _touch(session: PlanningSession) -> PlanningSession:
     return session.model_copy(update={"updated_at": _utc_now()})
+
+
+def _validate_session_for_write(session: PlanningSession) -> PlanningSession:
+    try:
+        return PlanningSession.model_validate(_dump_for_validation(session))
+    except ValidationError as exc:
+        raise SessionStoreError("Mutated session is not a valid PlanningSession") from exc
+
+
+def _validate_itinerary_for_write(itinerary: Itinerary) -> Itinerary:
+    try:
+        return Itinerary.model_validate(_dump_for_validation(itinerary))
+    except ValidationError as exc:
+        raise SessionStoreError("Mutated itinerary is not a valid Itinerary") from exc
+
+
+def _dump_for_validation(session: PlanningSession | Itinerary) -> dict[str, object]:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return session.model_dump(mode="json")
 
 
 def _require_session(store: SessionStore, session_id: str) -> PlanningSession:
