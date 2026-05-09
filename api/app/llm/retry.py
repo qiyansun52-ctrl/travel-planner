@@ -26,7 +26,7 @@ class RetryOptions:
     max_retries: int = DEFAULT_MAX_RETRIES
     base_delay_ms: int = DEFAULT_BASE_DELAY_MS
     max_delay_ms: int = DEFAULT_MAX_DELAY_MS
-    should_retry: Callable[[BaseException], bool] | None = None
+    should_retry: Callable[[Exception], bool] | None = None
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class RetryResult(Generic[T]):
 class RetryExhaustedError(Exception):
     """Wraps the final cause after retries are exhausted."""
 
-    def __init__(self, cause: BaseException, retry_count: int) -> None:
+    def __init__(self, cause: Exception, retry_count: int) -> None:
         super().__init__(str(cause))
         self.cause = cause
         self.retry_count = retry_count
@@ -56,7 +56,9 @@ async def with_retry(
         try:
             value = await operation()
             return RetryResult(value=value, retry_count=retry_count)
-        except BaseException as error:  # noqa: BLE001 -- re-raised below
+        except (asyncio.CancelledError, KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as error:
             if retry_count >= opts.max_retries or not should_retry(error):
                 raise RetryExhaustedError(error, retry_count) from error
 

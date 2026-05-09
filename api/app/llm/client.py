@@ -193,6 +193,8 @@ class GeminiLLMProvider:
             raise
         except Exception as e:
             raise LLMNetworkError("LLM provider network failure", cause=e) from e
+        finally:
+            await client.aio.aclose()
 
         text = (response.text or "").strip()
         if not text:

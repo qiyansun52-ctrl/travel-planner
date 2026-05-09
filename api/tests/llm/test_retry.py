@@ -1,6 +1,8 @@
 """Mirror of withRetry behavior in web/src/server/llm/retry.ts."""
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from app.llm.retry import (
@@ -71,6 +73,22 @@ async def test_does_not_retry_when_should_retry_returns_false() -> None:
     with pytest.raises(RetryExhaustedError):
         await with_retry(op, RetryOptions(max_retries=5, base_delay_ms=0))
     assert calls["n"] == 1  # never retried
+
+
+async def test_reraises_cancelled_error_without_retry_wrapping() -> None:
+    async def op() -> None:
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await with_retry(op, RetryOptions(base_delay_ms=0))
+
+
+async def test_reraises_keyboard_interrupt_without_retry_wrapping() -> None:
+    async def op() -> None:
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        await with_retry(op, RetryOptions(base_delay_ms=0))
 
 
 # ---------- is_transient_network_error ----------

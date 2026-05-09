@@ -5,13 +5,16 @@ Uses an in-memory FakeProvider so no real Gemini call is made.
 from __future__ import annotations
 
 import asyncio
+import sys
 from dataclasses import dataclass, field
+from types import ModuleType, SimpleNamespace
 from typing import Awaitable, Callable
 
 import pytest
 from pydantic import BaseModel, ConfigDict
 
 from app.llm.client import (
+    GeminiLLMProvider,
     LLMConfigurationError,
     LLMJsonParseError,
     LLMTimeoutError,
@@ -198,3 +201,68 @@ async def test_default_provider_raises_config_error_without_api_key(
 
     with pytest.raises(LLMConfigurationError):
         create_default_provider(env={})
+
+
+# ---------- Gemini provider ----------
+
+async def test_gemini_generate_returns_json_and_closes_async_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    closed = {"value": False}
+    calls: list[dict[str, object]] = []
+
+    class FakeAPIError(Exception):
+        pass
+
+    class FakeModels:
+        async def generate_content(self, **kwargs: object) -> SimpleNamespace:
+            calls.append(kwargs)
+            return SimpleNamespace(text='{"message":"from gemini"}')
+
+    class FakeAio:
+        def __init__(self) -> None:
+            self.models = FakeModels()
+
+        async def aclose(self) -> None:
+            closed["value"] = True
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            self.api_key = api_key
+            self.aio = FakeAio()
+
+    def fake_generate_content_config(**kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(**kwargs)
+
+    google_module = ModuleType("google")
+    genai_module = ModuleType("google.genai")
+    errors_module = ModuleType("google.genai.errors")
+    types_module = ModuleType("google.genai.types")
+
+    genai_module.Client = FakeClient
+    errors_module.APIError = FakeAPIError
+    types_module.GenerateContentConfig = fake_generate_content_config
+    genai_module.errors = errors_module
+    genai_module.types = types_module
+    google_module.genai = genai_module
+
+    monkeypatch.setitem(sys.modules, "google", google_module)
+    monkeypatch.setitem(sys.modules, "google.genai", genai_module)
+    monkeypatch.setitem(sys.modules, "google.genai.errors", errors_module)
+    monkeypatch.setitem(sys.modules, "google.genai.types", types_module)
+
+    provider = GeminiLLMProvider(api_key="test-key", model="test-model")
+    result = await provider.generate(system="sys", user="usr", timeout_ms=1000)
+
+    assert result == '{"message":"from gemini"}'
+    assert calls == [
+        {
+            "model": "test-model",
+            "contents": "usr",
+            "config": SimpleNamespace(
+                system_instruction="sys",
+                response_mime_type="application/json",
+            ),
+        }
+    ]
+    assert closed["value"] is True
