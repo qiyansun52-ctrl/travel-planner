@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,7 @@ from app.models.schemas import (
     DiscoveryState,
     HardConstraints,
     Itinerary,
+    PlanningSession,
     Preference,
     StayOption,
     StayRecommendation,
@@ -32,6 +34,10 @@ from app.persistence.file_session_repository import (
     default_session_store_path,
 )
 from app.persistence.session_repository import ResetStep
+
+FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "sessions.json"
+)
 
 
 def test_repository_errors_share_base_type() -> None:
@@ -622,3 +628,46 @@ async def test_missing_session_mutation_raises_not_found(tmp_path: Path) -> None
 
     with pytest.raises(SessionNotFoundError, match="missing"):
         await repository.update_preferences("missing", preferences())
+
+
+def test_copied_web_session_fixture_validates_against_pydantic() -> None:
+    raw = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+    assert isinstance(raw, dict)
+    assert raw
+    for session_id, payload in raw.items():
+        session = PlanningSession.model_validate(payload)
+        assert session.session_id == session_id
+
+
+@pytest.mark.parametrize("run_number", range(50))
+async def test_concurrent_writes_keep_store_readable(
+    tmp_path: Path,
+    run_number: int,
+) -> None:
+    store_path = tmp_path / f"sessions-{run_number}.json"
+    repository = FileSessionRepository(store_path)
+
+    sessions = await asyncio.gather(
+        *[repository.create(hard_constraints()) for _ in range(8)]
+    )
+    await asyncio.gather(
+        *[
+            repository.update_discovery(
+                session.session_id,
+                DiscoveryState(
+                    payload=None,
+                    selected_card_ids=[f"card_{index}"],
+                ),
+            )
+            for index, session in enumerate(sessions)
+        ]
+    )
+
+    loaded = await asyncio.gather(
+        *[repository.get(session.session_id) for session in sessions]
+    )
+
+    assert all(session is not None for session in loaded)
+    assert len(await repository.list()) == 8
+    json.loads(store_path.read_text(encoding="utf-8"))
