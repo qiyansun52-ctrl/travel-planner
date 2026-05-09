@@ -31,11 +31,7 @@ def classify_adjustment(raw_text: str) -> AdjustmentRequest:
     ):
         return _base(text, "B", 0.82, "transport", text)
 
-    if re.search(
-        r"轻松|紧凑|换|删除|添加|第二天|下午|itinerary|plan|day|second|afternoon|easier",
-        text,
-        re.IGNORECASE,
-    ):
+    if re.search(r"轻松|紧凑|换|删除|添加|第二天|下午|itinerary|plan|day", text, re.IGNORECASE):
         return _base(text, "A", 0.78, "day", text)
 
     return _base(text, "unknown", 0.45, "none", None)

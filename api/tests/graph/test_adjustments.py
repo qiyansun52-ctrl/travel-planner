@@ -20,11 +20,19 @@ def planned_session():
 
 
 def test_classify_light_itinerary_adjustment_targets_day() -> None:
-    classification = classify_adjustment("Make the second afternoon easier.")
+    classification = classify_adjustment("Update the itinerary for day two.")
 
     assert classification.type == "A"
     assert classification.confidence >= 0.55
     assert classification.target_scope == "day"
+
+
+def test_classify_second_afternoon_easier_unknown_under_ts_parity() -> None:
+    classification = classify_adjustment("Make the second afternoon easier.")
+
+    assert classification.type == "unknown"
+    assert classification.confidence < 0.55
+    assert classification.target_scope == "none"
 
 
 def test_classify_stay_adjustment_targets_stay() -> None:
@@ -52,7 +60,7 @@ def test_classify_short_confirmation_is_unknown() -> None:
 async def test_type_a_workflow_updates_itinerary() -> None:
     result = await run_adjustment_workflow(
         planned_session(),
-        message="Make the second afternoon easier.",
+        message="Update the itinerary for day two.",
     )
 
     assert result.classification.type == "A"
