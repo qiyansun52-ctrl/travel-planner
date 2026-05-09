@@ -425,7 +425,8 @@ async def test_stay_override_requires_stay_recommendation(
 async def test_reset_to_step_clears_downstream_state_and_preserves_id(
     tmp_path: Path,
 ) -> None:
-    repository = FileSessionRepository(tmp_path / "sessions.json")
+    store_path = tmp_path / "sessions.json"
+    repository = FileSessionRepository(store_path)
     session = await repository.create(hard_constraints())
     issue = validator_issue()
     turn = ConversationTurn(
@@ -471,11 +472,25 @@ async def test_reset_to_step_clears_downstream_state_and_preserves_id(
     assert reset.validator_issues == []
     assert reset.conversation_history == [turn]
 
+    loaded = await FileSessionRepository(store_path).get(session.session_id)
+
+    assert loaded is not None
+    assert loaded.session_id == session.session_id
+    assert loaded.hard_constraints.total_budget == 4500
+    assert loaded.discovery_state is None
+    assert loaded.preferences is None
+    assert loaded.stay_recommendation is None
+    assert loaded.transport_recommendation is None
+    assert loaded.itinerary is None
+    assert loaded.validator_issues == []
+    assert loaded.conversation_history == [turn]
+
 
 async def test_archive_and_fork_archives_original_and_returns_active_child(
     tmp_path: Path,
 ) -> None:
-    repository = FileSessionRepository(tmp_path / "sessions.json")
+    store_path = tmp_path / "sessions.json"
+    repository = FileSessionRepository(store_path)
     original = await repository.create(hard_constraints())
 
     fork = await repository.archive_and_fork(
@@ -483,22 +498,26 @@ async def test_archive_and_fork_archives_original_and_returns_active_child(
         "before budget cut",
         hard_constraints(total_budget=3000),
     )
-    archived = await repository.get(original.session_id)
+    reloaded_repository = FileSessionRepository(store_path)
+    archived = await reloaded_repository.get(original.session_id)
+    loaded_fork = await reloaded_repository.get(fork.session_id)
 
     assert archived is not None
     assert archived.session_id == original.session_id
     assert archived.status == "archived"
     assert archived.snapshot_label == "before budget cut"
-    assert fork.status == "active"
-    assert fork.parent_session_id == original.session_id
-    assert fork.hard_constraints.total_budget == 3000
-    assert fork.session_id != original.session_id
+    assert loaded_fork is not None
+    assert loaded_fork.status == "active"
+    assert loaded_fork.parent_session_id == original.session_id
+    assert loaded_fork.hard_constraints.total_budget == 3000
+    assert loaded_fork.session_id != original.session_id
 
 
 async def test_archived_sessions_reject_mutations_except_snapshot_label(
     tmp_path: Path,
 ) -> None:
-    repository = FileSessionRepository(tmp_path / "sessions.json")
+    store_path = tmp_path / "sessions.json"
+    repository = FileSessionRepository(store_path)
     original = await repository.create(hard_constraints())
     await repository.archive_and_fork(
         original.session_id,
@@ -555,13 +574,20 @@ async def test_archived_sessions_reject_mutations_except_snapshot_label(
     assert relabeled.status == "archived"
     assert relabeled.snapshot_label == "final snapshot"
 
+    loaded = await FileSessionRepository(store_path).get(original.session_id)
+
+    assert loaded is not None
+    assert loaded.status == "archived"
+    assert loaded.snapshot_label == "final snapshot"
+
 
 async def test_archive_and_fork_rejects_archived_original(
     tmp_path: Path,
 ) -> None:
-    repository = FileSessionRepository(tmp_path / "sessions.json")
+    store_path = tmp_path / "sessions.json"
+    repository = FileSessionRepository(store_path)
     original = await repository.create(hard_constraints())
-    await repository.archive_and_fork(
+    fork = await repository.archive_and_fork(
         original.session_id,
         "snapshot",
         hard_constraints(total_budget=3000),
@@ -574,8 +600,21 @@ async def test_archive_and_fork_rejects_archived_original(
             hard_constraints(total_budget=2000),
         )
 
-    sessions = await repository.list(include_archived=True)
+    reloaded_repository = FileSessionRepository(store_path)
+    sessions = await reloaded_repository.list(include_archived=True)
+    session_ids = {session.session_id for session in sessions}
+    archived_original = await reloaded_repository.get(original.session_id)
+    loaded_fork = await reloaded_repository.get(fork.session_id)
+
     assert len(sessions) == 2
+    assert session_ids == {original.session_id, fork.session_id}
+    assert archived_original is not None
+    assert archived_original.status == "archived"
+    assert archived_original.snapshot_label == "snapshot"
+    assert loaded_fork is not None
+    assert loaded_fork.status == "active"
+    assert loaded_fork.parent_session_id == original.session_id
+    assert loaded_fork.hard_constraints.total_budget == 3000
 
 
 async def test_missing_session_mutation_raises_not_found(tmp_path: Path) -> None:
