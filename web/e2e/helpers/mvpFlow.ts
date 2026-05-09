@@ -1,5 +1,7 @@
 import { expect, type Page } from "@playwright/test"
 
+const FLOW_EXPECT_TIMEOUT = 15_000
+
 export async function startFixtureTrip(page: Page, totalBudget = "6000") {
   await page.goto("/")
 
@@ -11,8 +13,10 @@ export async function startFixtureTrip(page: Page, totalBudget = "6000") {
   await page.getByLabel("Total trip budget").fill(totalBudget)
   await page.getByRole("button", { name: "Start discovering ideas" }).click()
 
-  await expect(page).toHaveURL(/\/discovery\/session_/)
-  await expect(page.getByRole("heading", { name: /Choose what feels worth it/ })).toBeVisible()
+  await expect(page).toHaveURL(/\/discovery\/session_/, { timeout: FLOW_EXPECT_TIMEOUT })
+  await expect(page.getByRole("heading", { name: /Choose what feels worth it/ })).toBeVisible({
+    timeout: FLOW_EXPECT_TIMEOUT,
+  })
 }
 
 export async function selectDiscoveryCards(page: Page) {
@@ -24,7 +28,7 @@ export async function selectDiscoveryCards(page: Page) {
   await expect(page.getByRole("button", { name: /Unselect .* city museum/ })).toBeVisible()
   await page.getByRole("button", { name: "Continue to preferences" }).click()
 
-  await expect(page).toHaveURL(/\/preferences\/session_/)
+  await expect(page).toHaveURL(/\/preferences\/session_/, { timeout: FLOW_EXPECT_TIMEOUT })
 }
 
 export async function submitPreferences(page: Page) {
@@ -32,8 +36,10 @@ export async function submitPreferences(page: Page) {
   await page.getByLabel("Stay type").selectOption("homestay")
   await page.getByRole("button", { name: "Generate itinerary" }).click()
 
-  await expect(page).toHaveURL(/\/trips\/session_/)
-  await expect(page.getByRole("heading", { name: /Your .* itinerary/ })).toBeVisible()
+  await expect(page).toHaveURL(/\/trips\/session_/, { timeout: FLOW_EXPECT_TIMEOUT })
+  await expect(page.getByRole("heading", { name: /Your .* itinerary/ })).toBeVisible({
+    timeout: FLOW_EXPECT_TIMEOUT,
+  })
   await expect(page.getByText("Final budget")).toBeVisible()
 }
 

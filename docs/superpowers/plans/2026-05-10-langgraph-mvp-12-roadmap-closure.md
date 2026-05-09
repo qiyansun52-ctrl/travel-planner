@@ -276,7 +276,7 @@ git commit -m "chore: check roadmap closure status"
 **Files:**
 - No planned file changes unless verification finds drift.
 
-- [ ] **Step 1: Run full regression**
+- [x] **Step 1: Run full regression**
 
 ```bash
 make regression
@@ -284,7 +284,7 @@ make regression
 
 Expected: launch checker, generated type drift, frontend lint/unit/build/e2e, backend pytest/ruff, and API smoke all pass.
 
-- [ ] **Step 2: Verify repository state**
+- [x] **Step 2: Verify repository state**
 
 ```bash
 git status --short --branch
@@ -293,7 +293,7 @@ git diff --check origin/feature/mvp-web-app...HEAD
 
 Expected: clean working tree and no whitespace errors.
 
-- [ ] **Step 3: Commit acceptance notes if the plan checklist changed**
+- [x] **Step 3: Commit acceptance notes if the plan checklist changed**
 
 ```bash
 git add docs/superpowers/plans/2026-05-10-langgraph-mvp-12-roadmap-closure.md
