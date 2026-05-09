@@ -10,6 +10,8 @@ import {
   HardConstraints,
   Itinerary,
   Preference,
+  StayRecommendation,
+  TransportRecommendation,
   ValidatorIssue,
 } from "@/domain/schemas"
 
@@ -73,6 +75,31 @@ const warningIssue: ValidatorIssue = {
   suggested_action: "Move one stop.",
 }
 
+const stayRecommendation: StayRecommendation = {
+  primary: {
+    id: "stay_primary",
+    area: {
+      id: "area_1",
+      name: "People Square",
+      vibe_tags: ["central"],
+      note: "Central base",
+      center: { lat: 31.23, lng: 121.47 },
+    },
+    fit_reason: "Short transfers",
+    price_band: band,
+    sample_hotels: [],
+  },
+  alternatives: [],
+  user_override_id: null,
+}
+
+const transportRecommendation: TransportRecommendation = {
+  arrival: { mode: "rail", duration_minutes: 300, cost_band: band, note: null },
+  departure: { mode: "rail", duration_minutes: 300, cost_band: band, note: null },
+  intracity: { primary_mode: "transit", daily_cost_band: { ...band, basis: "per_day" }, note: null },
+  tradeoffs: [],
+}
+
 beforeEach(async () => {
   tempDir = await mkdtemp(path.join(tmpdir(), "travel-session-repo-"))
   repository = new FileSessionRepository(path.join(tempDir, "sessions.json"))
@@ -132,6 +159,41 @@ describe("FileSessionRepository", () => {
     })
 
     expect(updated.discovery_state?.selected_card_ids).toEqual(["new_card"])
+  })
+
+  it("keeps the JSON store readable during concurrent writes", async () => {
+    const sessions = await Promise.all(
+      Array.from({ length: 8 }, () => repository.create(hardConstraints))
+    )
+
+    await Promise.all(
+      sessions.map((session, index) =>
+        repository.updateDiscovery(session.session_id, {
+          payload: null,
+          selected_card_ids: [`card_${index}`],
+        })
+      )
+    )
+
+    const loaded = await Promise.all(
+      sessions.map((session) => repository.get(session.session_id))
+    )
+
+    expect(loaded).toHaveLength(8)
+    expect(loaded.every(Boolean)).toBe(true)
+  })
+
+  it("writes stay and transport recommendations independently", async () => {
+    const session = await repository.create(hardConstraints)
+
+    await repository.updateStayRecommendation(session.session_id, stayRecommendation)
+    const updated = await repository.updateTransportRecommendation(
+      session.session_id,
+      transportRecommendation
+    )
+
+    expect(updated.stay_recommendation?.primary.id).toBe("stay_primary")
+    expect(updated.transport_recommendation?.arrival.mode).toBe("rail")
   })
 
   it("resetToStep clears downstream state and preserves the session id", async () => {

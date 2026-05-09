@@ -4,6 +4,8 @@ import {
   Itinerary,
   PlanningSession,
   Preference,
+  StayRecommendation,
+  TransportRecommendation,
   ValidatorIssue,
 } from "@/domain/schemas"
 
@@ -12,6 +14,14 @@ export interface SessionRepository {
   get(sessionId: string): Promise<PlanningSession | null>
   updateDiscovery(sessionId: string, discoveryState: DiscoveryState): Promise<PlanningSession>
   updatePreferences(sessionId: string, preferences: Preference): Promise<PlanningSession>
+  updateStayRecommendation(
+    sessionId: string,
+    stayRecommendation: StayRecommendation
+  ): Promise<PlanningSession>
+  updateTransportRecommendation(
+    sessionId: string,
+    transportRecommendation: TransportRecommendation
+  ): Promise<PlanningSession>
   writeItinerary(
     sessionId: string,
     itinerary: Itinerary,

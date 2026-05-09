@@ -1,33 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Travel Planner Web MVP
 
-## Getting Started
+Session-based single-city travel planning MVP built with Next.js App Router.
 
-First, run the development server:
+## Run
 
 ```bash
+cd web
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Test
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run test
+npm run typecheck
+npm run lint
+npm run build
+npm run test:e2e
+```
 
-## Learn More
+## MVP Flow
 
-To learn more about Next.js, take a look at the following resources:
+1. Submit hard constraints on `/`.
+2. Review fixture-backed discovery ideas at `/discovery/[sessionId]`.
+3. Select cards and complete stay/transport preferences.
+4. Review the itinerary at `/trips/[sessionId]`.
+5. Use the adjustment panel for partial replanning.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See `web/docs/mvp-launch-checklist.md` for environment variables, fallback behavior, and current MVP limits.
 
 ## Deploy on Vercel
 

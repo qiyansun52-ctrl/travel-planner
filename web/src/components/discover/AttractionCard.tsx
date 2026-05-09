@@ -31,6 +31,7 @@ export function AttractionCard({ card, selected, onToggle }: AttractionCardProps
 
       <div className="h-28 bg-gray-100 overflow-hidden flex-shrink-0">
         {card.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={card.imageUrl}
             alt={card.name}

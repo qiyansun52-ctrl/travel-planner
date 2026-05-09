@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import {
   DiscoveryState,
@@ -8,38 +8,44 @@ import {
   PlanningSession,
   PlanningSessionSchema,
   Preference,
+  StayRecommendation,
+  TransportRecommendation,
   ValidatorIssue,
 } from "@/domain/schemas"
 import { SessionRepository } from "./sessionRepository"
 
 type SessionStore = Record<string, PlanningSession>
 
+const mutationQueues = new Map<string, Promise<unknown>>()
+
 export class FileSessionRepository implements SessionRepository {
   constructor(private readonly filePath: string) {}
 
   async create(hardConstraints: HardConstraints): Promise<PlanningSession> {
-    const store = await this.readStore()
-    const now = new Date().toISOString()
-    const session: PlanningSession = {
-      session_id: `session_${randomUUID()}`,
-      hard_constraints: hardConstraints,
-      discovery_state: null,
-      preferences: null,
-      stay_recommendation: null,
-      transport_recommendation: null,
-      itinerary: null,
-      conversation_history: [],
-      validator_issues: [],
-      parent_session_id: null,
-      snapshot_label: null,
-      status: "active",
-      created_at: now,
-      updated_at: now,
-    }
+    return this.enqueueMutation(async () => {
+      const store = await this.readStore()
+      const now = new Date().toISOString()
+      const session: PlanningSession = {
+        session_id: `session_${randomUUID()}`,
+        hard_constraints: hardConstraints,
+        discovery_state: null,
+        preferences: null,
+        stay_recommendation: null,
+        transport_recommendation: null,
+        itinerary: null,
+        conversation_history: [],
+        validator_issues: [],
+        parent_session_id: null,
+        snapshot_label: null,
+        status: "active",
+        created_at: now,
+        updated_at: now,
+      }
 
-    store[session.session_id] = session
-    await this.writeStore(store)
-    return session
+      store[session.session_id] = session
+      await this.writeStore(store)
+      return session
+    })
   }
 
   async get(sessionId: string): Promise<PlanningSession | null> {
@@ -61,6 +67,26 @@ export class FileSessionRepository implements SessionRepository {
     return this.updateActive(sessionId, (session) => ({
       ...session,
       preferences,
+    }))
+  }
+
+  async updateStayRecommendation(
+    sessionId: string,
+    stayRecommendation: StayRecommendation
+  ): Promise<PlanningSession> {
+    return this.updateActive(sessionId, (session) => ({
+      ...session,
+      stay_recommendation: stayRecommendation,
+    }))
+  }
+
+  async updateTransportRecommendation(
+    sessionId: string,
+    transportRecommendation: TransportRecommendation
+  ): Promise<PlanningSession> {
+    return this.updateActive(sessionId, (session) => ({
+      ...session,
+      transport_recommendation: transportRecommendation,
     }))
   }
 
@@ -130,67 +156,73 @@ export class FileSessionRepository implements SessionRepository {
     snapshotLabel: string,
     newHardConstraints: HardConstraints
   ): Promise<PlanningSession> {
-    const store = await this.readStore()
-    const original = this.requireSession(store, sessionId)
-    this.assertActive(original)
+    return this.enqueueMutation(async () => {
+      const store = await this.readStore()
+      const original = this.requireSession(store, sessionId)
+      this.assertActive(original)
 
-    const now = new Date().toISOString()
-    store[sessionId] = {
-      ...original,
-      status: "archived",
-      snapshot_label: snapshotLabel,
-      updated_at: now,
-    }
+      const now = new Date().toISOString()
+      store[sessionId] = {
+        ...original,
+        status: "archived",
+        snapshot_label: snapshotLabel,
+        updated_at: now,
+      }
 
-    const fork: PlanningSession = {
-      session_id: `session_${randomUUID()}`,
-      hard_constraints: newHardConstraints,
-      discovery_state: null,
-      preferences: null,
-      stay_recommendation: null,
-      transport_recommendation: null,
-      itinerary: null,
-      conversation_history: [],
-      validator_issues: [],
-      parent_session_id: sessionId,
-      snapshot_label: null,
-      status: "active",
-      created_at: now,
-      updated_at: now,
-    }
+      const fork: PlanningSession = {
+        session_id: `session_${randomUUID()}`,
+        hard_constraints: newHardConstraints,
+        discovery_state: null,
+        preferences: null,
+        stay_recommendation: null,
+        transport_recommendation: null,
+        itinerary: null,
+        conversation_history: [],
+        validator_issues: [],
+        parent_session_id: sessionId,
+        snapshot_label: null,
+        status: "active",
+        created_at: now,
+        updated_at: now,
+      }
 
-    store[fork.session_id] = fork
-    await this.writeStore(store)
-    return fork
+      store[fork.session_id] = fork
+      await this.writeStore(store)
+      return fork
+    })
   }
 
   async updateSnapshotLabel(
     sessionId: string,
     snapshotLabel: string
   ): Promise<PlanningSession> {
-    const store = await this.readStore()
-    const session = this.requireSession(store, sessionId)
-    const updated = this.touch({
-      ...session,
-      snapshot_label: snapshotLabel,
-    })
+    return this.enqueueMutation(async () => {
+      const store = await this.readStore()
+      const session = this.requireSession(store, sessionId)
+      const updated = this.touch({
+        ...session,
+        snapshot_label: snapshotLabel,
+      })
 
-    store[sessionId] = updated
-    await this.writeStore(store)
-    return updated
+      store[sessionId] = updated
+      await this.writeStore(store)
+      return updated
+    })
   }
 
   private async updateActive(
     sessionId: string,
     updater: (session: PlanningSession) => PlanningSession
   ): Promise<PlanningSession> {
-    const store = await this.readStore()
-    const session = this.requireSession(store, sessionId)
-    this.assertActive(session)
-    const updated = this.touch(updater(session))
-    store[sessionId] = updated
-    await this.writeStore(store)
-    return updated
+    return this.enqueueMutation(async () => {
+      const store = await this.readStore()
+      const session = this.requireSession(store, sessionId)
+      this.assertActive(session)
+      const updated = this.touch(updater(session))
+      store[sessionId] = updated
+      await this.writeStore(store)
+      return updated
+    })
   }
 
   private async readStore(): Promise<SessionStore> {
@@ -202,13 +234,40 @@ export class FileSessionRepository implements SessionRepository {
       )
     } catch (error) {
       if (isMissingFileError(error)) return {}
+      if (error instanceof SyntaxError) {
+        await this.quarantineCorruptStore()
+        return {}
+      }
       throw error
     }
   }
 
   private async writeStore(store: SessionStore): Promise<void> {
     await mkdir(path.dirname(this.filePath), { recursive: true })
-    await writeFile(this.filePath, `${JSON.stringify(store, null, 2)}\n`, "utf8")
+    const tempPath = `${this.filePath}.${process.pid}.${randomUUID()}.tmp`
+    await writeFile(tempPath, `${JSON.stringify(store, null, 2)}\n`, "utf8")
+    await rename(tempPath, this.filePath)
+  }
+
+  private async enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = mutationQueues.get(this.filePath) ?? Promise.resolve()
+    const next = previous.then(operation, operation)
+    mutationQueues.set(
+      this.filePath,
+      next.catch(() => {
+        // Keep the queue alive after failures so later writes are not stranded.
+      })
+    )
+    return next
+  }
+
+  private async quarantineCorruptStore(): Promise<void> {
+    const corruptPath = `${this.filePath}.corrupt-${Date.now()}`
+    try {
+      await rename(this.filePath, corruptPath)
+    } catch {
+      // If another request already handled the corrupt file, continue with an empty store.
+    }
   }
 
   private requireSession(store: SessionStore, sessionId: string): PlanningSession {
