@@ -299,7 +299,7 @@ class PlanningSession(_StrictModel):
     stay_recommendation: StayRecommendation | None
     transport_recommendation: TransportRecommendation | None
     itinerary: Itinerary | None
-    conversation_history: list[ConversationTurn] | list[dict[str, Any]]
+    conversation_history: list[ConversationTurn]
     validator_issues: list[ValidatorIssue]
     parent_session_id: str | None
     snapshot_label: str | None

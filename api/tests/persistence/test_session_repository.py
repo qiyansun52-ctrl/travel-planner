@@ -326,37 +326,46 @@ def itinerary(session_id: str) -> Itinerary:
 async def test_updates_discovery_preferences_itinerary_and_conversation(
     tmp_path: Path,
 ) -> None:
-    repository = FileSessionRepository(tmp_path / "sessions.json")
+    store_path = tmp_path / "sessions.json"
+    repository = FileSessionRepository(store_path)
     session = await repository.create(hard_constraints())
+    expected_preferences = preferences()
+    expected_itinerary = itinerary(session.session_id)
+    issue = validator_issue()
+    turn = ConversationTurn(
+        id="turn_1",
+        raw_text="Make day two easier.",
+        classification=None,
+        created_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
+    )
 
     await repository.update_discovery(
         session.session_id,
         DiscoveryState(payload=None, selected_card_ids=["card_1"]),
     )
-    await repository.update_preferences(session.session_id, preferences())
-    issue = validator_issue()
+    await repository.update_preferences(session.session_id, expected_preferences)
     await repository.write_itinerary(
         session.session_id,
-        itinerary(session.session_id),
+        expected_itinerary,
         [issue],
     )
-    updated = await repository.append_conversation_turn(
+    await repository.append_conversation_turn(
         session.session_id,
-        ConversationTurn(
-            id="turn_1",
-            raw_text="Make day two easier.",
-            classification=None,
-            created_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
-        ),
+        turn,
     )
 
-    assert updated.discovery_state is not None
-    assert updated.discovery_state.selected_card_ids == ["card_1"]
-    assert updated.preferences is not None
-    assert updated.itinerary is not None
-    assert updated.itinerary.validator_issues == [issue]
-    assert updated.validator_issues == [issue]
-    assert len(updated.conversation_history) == 1
+    loaded = await FileSessionRepository(store_path).get(session.session_id)
+
+    assert loaded is not None
+    assert loaded.discovery_state is not None
+    assert loaded.discovery_state.selected_card_ids == ["card_1"]
+    assert loaded.preferences == expected_preferences
+    assert loaded.itinerary is not None
+    assert loaded.itinerary.id == "itinerary_1"
+    assert loaded.itinerary.session_id == session.session_id
+    assert loaded.itinerary.validator_issues == [issue]
+    assert loaded.validator_issues == [issue]
+    assert loaded.conversation_history == [turn]
 
 
 async def test_last_write_wins_for_repeated_discovery_updates(
