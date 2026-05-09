@@ -34,6 +34,7 @@
 - `api/app/routes/preferences.py` - preference persistence endpoint.
 - `api/app/routes/itinerary.py` - itinerary JSON and SSE endpoints.
 - `api/app/routes/adjustments.py` - adjustment endpoint with Type A/B/C persistence.
+- `api/tests/routes/__init__.py` - route test package marker matching the existing test package layout.
 - `api/tests/routes/conftest.py` - isolated temp repository/metrics environment and async client fixture.
 - `api/tests/routes/test_sessions.py`
 - `api/tests/routes/test_discovery_preferences.py`
@@ -129,10 +130,17 @@ Expected: commit created.
 ## Task 1: Route Test Harness And Shared Utilities
 
 **Files:**
+- Create: `api/tests/routes/__init__.py`
 - Create: `api/tests/routes/conftest.py`
 - Create: `api/app/routes/_shared.py`
 
 - [ ] **Step 1.1: Write route fixture harness**
+
+Create `api/tests/routes/__init__.py`:
+
+```python
+"""Route test package."""
+```
 
 Create `api/tests/routes/conftest.py`:
 
@@ -352,7 +360,7 @@ async def iter_progress_frames(
 Run:
 
 ```bash
-cd api && uv run ruff check app/routes/_shared.py tests/routes/conftest.py
+cd api && uv run ruff check app/routes/_shared.py tests/routes/__init__.py tests/routes/conftest.py
 ```
 
 Expected: pass.
@@ -362,7 +370,7 @@ Expected: pass.
 Run:
 
 ```bash
-git add api/app/routes/_shared.py api/tests/routes/conftest.py
+git add api/app/routes/_shared.py api/tests/routes/__init__.py api/tests/routes/conftest.py
 git commit -m "test(api): add route harness and shared helpers"
 ```
 
