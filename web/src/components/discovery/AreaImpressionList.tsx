@@ -1,4 +1,4 @@
-import { AreaSummary } from "@/domain/schemas"
+import type { AreaSummary } from "@/lib/types"
 
 export function AreaImpressionList({ items }: { items: AreaSummary[] }) {
   return (

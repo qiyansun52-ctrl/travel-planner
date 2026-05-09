@@ -1,4 +1,4 @@
-import { BudgetSummary } from "@/domain/schemas"
+import type { BudgetSummary } from "@/lib/types"
 
 export function BudgetBandPanel({ budget }: { budget: BudgetSummary }) {
   const rows = [

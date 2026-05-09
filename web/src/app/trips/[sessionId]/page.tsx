@@ -5,8 +5,8 @@ import { useParams } from "next/navigation"
 import { AdjustmentPanel } from "@/components/chat/AdjustmentPanel"
 import { ItineraryView } from "@/components/itinerary/ItineraryView"
 import { PlanningProgress } from "@/components/itinerary/PlanningProgress"
-import { PlanningSession } from "@/domain/schemas"
 import { getSession, runItinerary, updateStayOverride } from "@/lib/apiClient"
+import type { PlanningSession } from "@/lib/types"
 
 export default function TripPage() {
   const { sessionId } = useParams<{ sessionId: string }>()

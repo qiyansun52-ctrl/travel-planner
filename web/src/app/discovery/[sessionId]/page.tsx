@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { DiscoveryBoard } from "@/components/discovery/DiscoveryBoard"
-import { PlanningSession } from "@/domain/schemas"
 import { getSession, runDiscovery, updateSelectedCards } from "@/lib/apiClient"
+import type { PlanningSession } from "@/lib/types"
 
 export default function DiscoveryPage() {
   const { sessionId } = useParams<{ sessionId: string }>()

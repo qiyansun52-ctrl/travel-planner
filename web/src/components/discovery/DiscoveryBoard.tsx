@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { DiscoveryOutput, PlanningSession } from "@/domain/schemas"
 import {
   hasDensityWarning,
   isContinueDisabled,
   normalizeSelectedCardIds,
-} from "@/domain/selection"
+} from "@/lib/selection"
+import type { DiscoveryOutput, PlanningSession } from "@/lib/types"
 import { AreaImpressionList } from "./AreaImpressionList"
 import { BudgetBandPanel } from "./BudgetBandPanel"
 import { DiscoveryCardGrid } from "./DiscoveryCardGrid"

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { StayOption, StayRecommendation } from "@/domain/schemas"
+import type { StayOption, StayRecommendation } from "@/lib/types"
 
 interface StayAreaSwitcherProps {
   stay: StayRecommendation

@@ -1,4 +1,4 @@
-import { ValidatorIssue } from "@/domain/schemas"
+import type { ValidatorIssue } from "@/lib/types"
 
 export function ValidatorIssueNote({ issue }: { issue: ValidatorIssue }) {
   return (

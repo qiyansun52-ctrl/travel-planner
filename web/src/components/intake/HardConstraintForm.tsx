@@ -2,8 +2,8 @@
 
 import { FormEvent, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { HardConstraints } from "@/domain/schemas"
 import { createSession } from "@/lib/apiClient"
+import type { HardConstraints } from "@/lib/types"
 
 interface CityOption {
   label: string

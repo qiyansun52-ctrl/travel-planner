@@ -1,7 +1,7 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { Preference } from "@/domain/schemas"
+import type { Preference } from "@/lib/types"
 
 interface PreferenceFormProps {
   onSubmit: (payload: Preference) => Promise<void> | void

@@ -1,4 +1,4 @@
-import { FoodSummary } from "@/domain/schemas"
+import type { FoodSummary } from "@/lib/types"
 
 export function FoodSummaryList({ items }: { items: FoodSummary[] }) {
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { DiscoveryCard as DiscoveryCardType } from "@/domain/schemas"
+import type { DiscoveryCard as DiscoveryCardType } from "@/lib/types"
 import { DiscoveryCard } from "./DiscoveryCard"
 
 interface DiscoveryCardGridProps {

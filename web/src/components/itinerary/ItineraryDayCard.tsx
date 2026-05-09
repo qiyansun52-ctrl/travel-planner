@@ -1,4 +1,4 @@
-import { ItineraryDay, ValidatorIssue } from "@/domain/schemas"
+import type { ItineraryDay, ValidatorIssue } from "@/lib/types"
 import { ValidatorIssueNote } from "./ValidatorIssueNote"
 
 export function ItineraryDayCard({

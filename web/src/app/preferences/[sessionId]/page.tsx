@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { PreferenceForm } from "@/components/preferences/PreferenceForm"
-import { PlanningSession, Preference } from "@/domain/schemas"
 import { getSession, savePreferences } from "@/lib/apiClient"
+import type { PlanningSession, Preference } from "@/lib/types"
 
 export default function PreferencesPage() {
   const { sessionId } = useParams<{ sessionId: string }>()

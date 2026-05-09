@@ -1,6 +1,6 @@
 "use client"
 
-import { PlanningSession } from "@/domain/schemas"
+import type { PlanningSession } from "@/lib/types"
 import { ItineraryDayCard } from "./ItineraryDayCard"
 import { StayAreaSwitcher } from "./StayAreaSwitcher"
 

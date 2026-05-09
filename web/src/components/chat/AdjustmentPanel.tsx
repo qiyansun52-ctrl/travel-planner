@@ -1,8 +1,8 @@
 "use client"
 
 import { FormEvent, useState } from "react"
-import { PlanningSession } from "@/domain/schemas"
 import { submitAdjustment, type AdjustmentResponse } from "@/lib/apiClient"
+import type { PlanningSession } from "@/lib/types"
 import { TypeCConfirmationCard } from "./TypeCConfirmationCard"
 
 interface AdjustmentPanelProps {
