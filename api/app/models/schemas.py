@@ -8,7 +8,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    AnyUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 IsoDate = Annotated[str, StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}$")]
 TimeOfDay = Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
@@ -21,11 +30,20 @@ CostSignal = Literal["free", "low", "medium", "high", "unknown"]
 Confidence = Literal["high", "medium", "low"]
 BudgetBasis = Literal["per_person", "per_party", "per_room_per_night", "per_day", "per_trip"]
 
+_URL_ADAPTER = TypeAdapter(AnyUrl)
+
 
 class _StrictModel(BaseModel):
     """Zod `.strict()` equivalent for all domain entities."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True, str_strip_whitespace=False)
+
+
+def _validate_url_string(value: str | None) -> str | None:
+    if value is None:
+        return None
+    _URL_ADAPTER.validate_python(value)
+    return value
 
 
 class Coordinate(_StrictModel):
@@ -80,6 +98,11 @@ class DiscoveryCard(_StrictModel):
     place: NormalizedPlace | None
     enrichment_status: Literal["complete", "partial", "minimal"]
 
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image_url(cls, value: str | None) -> str | None:
+        return _validate_url_string(value)
+
 
 class AreaSummary(_StrictModel):
     id: NonEmpty
@@ -96,11 +119,21 @@ class FoodSummary(_StrictModel):
     description: NonEmpty
     image_url: str | None
 
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image_url(cls, value: str | None) -> str | None:
+        return _validate_url_string(value)
+
 
 class SourceNote(_StrictModel):
     provider: NonEmpty
     url: str | None
     note: NonEmpty
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url(cls, value: str | None) -> str | None:
+        return _validate_url_string(value)
 
 
 class BudgetSummary(_StrictModel):

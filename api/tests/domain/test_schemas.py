@@ -7,9 +7,11 @@ from pydantic import ValidationError
 from app.models.schemas import (
     BudgetBand,
     Coordinate,
+    DiscoveryCard,
     HardConstraints,
     Itinerary,
     NormalizedPlace,
+    SourceNote,
     PlanningSession,
     Preference,
     ValidatorIssue,
@@ -63,6 +65,27 @@ def test_normalized_place_rejects_unknown_provider() -> None:
             category=None,
             provider="yahoo",  # type: ignore[arg-type]
         )
+
+
+def test_url_fields_reject_invalid_urls() -> None:
+    with pytest.raises(ValidationError):
+        DiscoveryCard(
+            id="card-1",
+            name="Invalid image",
+            reason="r",
+            category="c",
+            tags=[],
+            suggested_duration_minutes=60,
+            cost_signal="unknown",
+            cost_estimate=None,
+            image_url="not-a-url",
+            reservation_hint=None,
+            place=None,
+            enrichment_status="minimal",
+        )
+
+    with pytest.raises(ValidationError):
+        SourceNote(provider="search", url="not-a-url", note="source")
 
 
 def test_hard_constraints_country_code_pattern() -> None:
