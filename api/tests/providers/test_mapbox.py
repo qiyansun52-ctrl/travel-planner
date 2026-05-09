@@ -11,6 +11,7 @@ from app.providers.types import (
     GeocodeRequest,
     PlaceSearchRequest,
     ProviderError,
+    ReverseGeocodeRequest,
     RouteRequest,
 )
 
@@ -276,6 +277,38 @@ async def test_search_places_maps_non_dict_feature_to_invalid_payload(
     assert error.value.code == "invalid_normalized_payload"
 
 
+async def test_reverse_geocode_returns_first_feature(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(
+            r"https://api\.mapbox\.com/geocoding/v5/mapbox\.places/"
+            r"121\.4737,31\.2304\.json.*"
+        ),
+        json={
+            "features": [
+                {
+                    "id": "address.1",
+                    "text": "People's Square",
+                    "place_name": "People's Square, Shanghai, China",
+                    "geometry": {"coordinates": [121.4737, 31.2304]},
+                    "properties": {"feature_type": "address"},
+                }
+            ]
+        },
+    )
+    provider = MapboxMapProvider(access_token="token")
+
+    place = await provider.reverse_geocode(
+        ReverseGeocodeRequest(coordinate={"lat": 31.2304, "lng": 121.4737})
+    )
+
+    assert place.id == "mapbox:address.1"
+    assert place.name == "People's Square"
+    assert place.coordinate is not None
+    assert place.coordinate.lat == 31.2304
+    assert place.coordinate.lng == 121.4737
+
+
 async def test_route_maps_duration_and_distance(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         method="GET",
@@ -325,6 +358,21 @@ async def test_route_rejects_unsupported_mode() -> None:
             )
         )
     assert ei.value.code == "capability_unavailable"
+
+
+async def test_route_rejects_unsupported_mode_before_missing_token() -> None:
+    provider = MapboxMapProvider(access_token=None)
+
+    with pytest.raises(ProviderError) as error:
+        await provider.route(
+            RouteRequest(
+                from_=_place("a", 1, 2),
+                to=_place("b", 3, 4),
+                mode="transit",
+            )
+        )
+
+    assert error.value.code == "capability_unavailable"
 
 
 async def test_route_maps_non_list_routes_to_invalid_payload(

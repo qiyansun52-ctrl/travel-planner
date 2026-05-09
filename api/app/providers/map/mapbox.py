@@ -56,9 +56,10 @@ class MapboxMapProvider:
         self, request: ReverseGeocodeRequest
     ) -> NormalizedPlace:
         token = self._require_access_token()
+        lat, lng = _coordinate_lat_lng(request.coordinate)
         path = (
             "/geocoding/v5/mapbox.places/"
-            f"{request.coordinate.lng},{request.coordinate.lat}.json"
+            f"{lng},{lat}.json"
         )
         body = await self._fetch_json(
             path, {"access_token": token, "limit": "1"}, "reverseGeocode"
@@ -91,11 +92,11 @@ class MapboxMapProvider:
         return normalized
 
     async def route(self, request: RouteRequest) -> NormalizedRoute:
+        profile = _to_mapbox_directions_profile(request.mode)
         token = self._require_access_token()
         if request.from_.coordinate is None or request.to.coordinate is None:
             raise self._invalid_payload_error("Mapbox route requires coordinates")
 
-        profile = _to_mapbox_directions_profile(request.mode)
         coordinates = (
             f"{request.from_.coordinate.lng},{request.from_.coordinate.lat};"
             f"{request.to.coordinate.lng},{request.to.coordinate.lat}"
@@ -285,6 +286,24 @@ def _expect_list(value: object, label: str) -> list[Any]:
             message=f"{label} must be a list",
         )
     return value
+
+
+def _coordinate_lat_lng(coordinate: object) -> tuple[float, float]:
+    if isinstance(coordinate, dict):
+        lat = coordinate.get("lat")
+        lng = coordinate.get("lng")
+    else:
+        lat = getattr(coordinate, "lat", None)
+        lng = getattr(coordinate, "lng", None)
+
+    if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+        raise ProviderError(
+            provider="mapbox",
+            kind="map",
+            code="invalid_normalized_payload",
+            message="Invalid Mapbox reverse geocode coordinate",
+        )
+    return lat, lng
 
 
 def _to_mapbox_directions_profile(mode: str) -> str:
