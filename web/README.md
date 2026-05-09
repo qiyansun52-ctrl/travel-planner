@@ -1,6 +1,6 @@
-# Travel Planner Web MVP
+# Travel Planner — Web (UI 层)
 
-Session-based single-city travel planning MVP built with Next.js App Router.
+Next.js 应用,只负责 UI 和路由壳。所有规划逻辑在 `../api`(Python LangGraph)。
 
 ## Run
 
@@ -10,32 +10,22 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+默认打开 `http://localhost:3000`,后端依赖 `../api` 跑在 `http://localhost:8000`。
 
 ## Test
 
 ```bash
-npm run test
 npm run typecheck
 npm run lint
+npm run test
 npm run build
 npm run test:e2e
 ```
 
-## MVP Flow
+## Canonical Flow
 
-1. Submit hard constraints on `/`.
-2. Review fixture-backed discovery ideas at `/discovery/[sessionId]`.
-3. Select cards and complete stay/transport preferences.
-4. Review the itinerary at `/trips/[sessionId]`.
-5. Use the adjustment panel for partial replanning.
+```text
+/ -> /discovery/[sessionId] -> /preferences/[sessionId] -> /trips/[sessionId]
+```
 
-## Notes
-
-See `web/docs/mvp-launch-checklist.md` for environment variables, fallback behavior, and current MVP limits.
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+旧的 `/discover/[destination]`、`/plan/[id]`、Next.js server agents 和 Next.js API routes 是迁移期 legacy surface,最终会被 Python 后端取代。

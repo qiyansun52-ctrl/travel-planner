@@ -1,3 +1,7 @@
+> **STATUS: SUPERSEDED (2026-05-09)**
+> 本 discovery flow 已并入单城市 MVP 的 discovery 阶段;搜索/provider 细节由 Python + LangGraph 路线重定。
+> 当前唯一 active 计划见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # Discovery Flow — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

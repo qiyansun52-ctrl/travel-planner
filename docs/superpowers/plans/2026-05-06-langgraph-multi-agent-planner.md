@@ -1,3 +1,7 @@
+> **STATUS: SUPERSEDED (2026-05-09)**
+> 本计划的 LangGraph 后端方向仍然有效,但 legacy `/api/plan/generate` 适配形态已被单城市 session MVP 取代。
+> 当前唯一 active 计划见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # LangGraph Multi-Agent Planner Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

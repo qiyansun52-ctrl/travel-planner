@@ -1,3 +1,7 @@
+> **STATUS: COMPLETED (2026-05-09)**
+> 本计划作为 Python 后端基础已落地;原始提交范围为 `1ab156f..6433d19`,迁移到当前仓库后的等价范围为 `a17094e..ba2a015`。
+> 后续后端演进见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # Python Backend Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

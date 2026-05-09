@@ -1,3 +1,7 @@
+> **STATUS: SUPERSEDED (2026-05-09)**
+> 本设计的产品定位已并入 spec v2;具体架构以 Python + LangGraph 后端为准。
+> 当前 active 设计见:`docs/superpowers/specs/2026-05-09-travel-planner-design-v2.md`
+
 # Single-City Travel Planning MVP Design
 
 ## Goal
