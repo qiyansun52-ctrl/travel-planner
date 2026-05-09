@@ -13,10 +13,11 @@
 - 离线发布门禁跑通：`make regression` 全绿。
 - 当前主流程会先用 Tavily 搜索 grounding，再把搜索摘要交给 Gemini discovery agent 生成结构化结果。
 - Plan15 已把 AMap/Mapbox provider registry 接入 discovery card place enrichment；本机地图 key 为空时会自动跳过并保留 LLM place。
+- Plan16 已新增最近行程恢复入口：首页会列出最近 active sessions，并可继续回 discovery/preferences/trips。
 
 当前分支：`feature/mvp-web-app`
 
-当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程，并通过真实 smoke 与完整 regression。
+当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程；Plan16 已补上最近行程恢复入口，并通过完整 regression。
 
 ## 今天你完成了什么
 
@@ -129,10 +130,19 @@ make regression
 - web lint passed
 - web unit tests: `12 passed`
 - web build passed
-- API pytest: `345 passed, 1 warning`
+- API pytest: `349 passed, 1 warning`
 - API ruff passed
 - fixture smoke passed
-- Playwright e2e: `4 passed`
+- Playwright e2e: `5 passed`
+
+### 7. 补上最近行程恢复
+
+Plan16 新增了本地持久化的恢复入口：
+
+- `GET /api/sessions` 返回最近 active sessions，支持 `limit` 和 `include_archived`。
+- 首页会拉取最近行程并展示目的地、日期、预算和当前状态。
+- Resume 会根据 session 状态跳到 discovery、preferences 或 trips。
+- Recent trips focused e2e 和完整 regression 均已通过。
 
 ## Agent 跑通了吗
 
@@ -147,6 +157,7 @@ make regression
 
 - Tavily search provider：adapter 已真实跑通，key 可用；Plan14 已把 Tavily grounding 接入 discovery 主流程。
 - Map place enrichment：Plan15 已接入 discovery 主流程；有 AMap/Mapbox key 时会用 provider registry 为 discovery cards 解析真实 `NormalizedPlace`，失败时保留 LLM place 并继续。
+- Recent trips / resume：Plan16 已新增 `GET /api/sessions` 和首页最近行程入口，用户可以回到首页继续最近的本地行程。
 
 ### 还没有产品化
 
@@ -167,10 +178,12 @@ make regression
 - Trips 页面展示 stay area、budget、daily itinerary。
 - Adjustment 输入和提交。
 - Progress panel。
+- 最近行程恢复入口。
 
 ### API 功能
 
 - `POST /api/sessions`
+- `GET /api/sessions`
 - `GET /api/sessions/{session_id}`
 - `POST /api/sessions/{session_id}/discovery`
 - `PATCH /api/sessions/{session_id}/selection`
@@ -272,11 +285,23 @@ Plan15: Map Place Enrichment
 - 缺地图 key 或 provider 失败时 graceful fallback。
 - 最新完整 regression 全绿。
 
+Plan16 已补上：
+
+```text
+Plan16: Session Resume
+```
+
+已完成：
+
+- `GET /api/sessions` 最近 active sessions。
+- 首页 Recent trips。
+- Recent trips Playwright e2e，并纳入完整 regression。
+
 之后建议继续做：
 
-- Plan16: real map key smoke + route-duration enrichment。
-- Plan17: production readiness，包括部署、限流、日志、成本控制、错误监控。
-- Plan18: product polish，包括真实图片、加载体验、保存/恢复、中文 UI 完整化。
+- Plan17: real map key smoke + route-duration enrichment。
+- Plan18: production readiness，包括部署、限流、日志、成本控制、错误监控。
+- Plan19: product polish，包括真实图片、加载体验、中文 UI 完整化。
 
 ## 当前风险
 
@@ -285,6 +310,7 @@ Plan15: Map Place Enrichment
 - 地图 enrichment 已接入，但本机还没配置 AMap/Mapbox key，因此真实地图外部调用未验收。
 - 真实 Gemini 输出仍需要长期观察，虽然今天已经加了 schema、净化和重试。
 - 当前 session persistence 是本地文件，不适合多人生产使用。
+- 最近行程恢复是匿名本地恢复，不是账号级跨设备同步。
 - 没有认证、限流、额度保护。
 - 没有线上监控和错误告警。
 
@@ -293,6 +319,6 @@ Plan15: Map Place Enrichment
 - 没有 dev server 残留。
 - 本地 `.env` 不会被提交。
 - 真实 provider 稳定性修复已提交。
-- 完整 regression 已通过，包括 Plan15 后的最新一轮：API `345 passed`、web unit `12 passed`、Playwright `4 passed`。
+- 完整 regression 已通过，包括 Plan16 后的最新一轮：API `349 passed`、web unit `12 passed`、Playwright `5 passed`。
 - 真实 Gemini/Tavily 验收已通过；Plan15 后的真实 API smoke 也已通过。地图 key 为空，所以地图 enrichment 路径本次验证的是自动跳过和兜底。
 - 项目现在可以被称为“真实可用 MVP”，但还不是“可长期给真实用户使用的生产产品”。

@@ -1,7 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { listSessions } from "@/lib/apiClient"
+import type { PlanningSession } from "@/lib/types"
 import { HardConstraintForm, type IntakeLanguage } from "./HardConstraintForm"
+import { RecentTrips } from "./RecentTrips"
 
 const copy = {
   en: {
@@ -22,7 +25,22 @@ const copy = {
 
 export function HomeStart() {
   const [language, setLanguage] = useState<IntakeLanguage>("en")
+  const [recentSessions, setRecentSessions] = useState<PlanningSession[]>([])
   const text = copy[language]
+
+  useEffect(() => {
+    let active = true
+    listSessions()
+      .then((sessions) => {
+        if (active) setRecentSessions(sessions)
+      })
+      .catch(() => {
+        if (active) setRecentSessions([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   return (
     <section className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col justify-center gap-8">
@@ -47,6 +65,7 @@ export function HomeStart() {
           {text.switchText}
         </button>
       </div>
+      <RecentTrips sessions={recentSessions} language={language} />
       <HardConstraintForm language={language} />
     </section>
   )

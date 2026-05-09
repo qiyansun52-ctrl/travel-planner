@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   createSession,
   getSession,
+  listSessions,
   runDiscovery,
   runItinerary,
   savePreferences,
@@ -78,6 +79,7 @@ describe("apiClient", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(() => mockJsonResponse({ session_id: "s1" }))
 
+    await listSessions()
     await getSession("s1")
     await runDiscovery("s1")
     await updateSelectedCards("s1", ["card-a"])
@@ -91,6 +93,7 @@ describe("apiClient", () => {
     })
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "http://127.0.0.1:8000/api/sessions?limit=5",
       "http://127.0.0.1:8000/api/sessions/s1",
       "http://127.0.0.1:8000/api/sessions/s1/discovery",
       "http://127.0.0.1:8000/api/sessions/s1/selection",
@@ -100,13 +103,13 @@ describe("apiClient", () => {
       "http://127.0.0.1:8000/api/sessions/s1/adjustments",
     ])
 
-    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
       selected_card_ids: ["card-a"],
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[3][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[4][1]?.body))).toEqual({
       preferences,
     })
-    expect(JSON.parse(String(fetchMock.mock.calls[6][1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[7][1]?.body))).toEqual({
       message: "Make day two lighter",
       type_c_action: "replan",
     })

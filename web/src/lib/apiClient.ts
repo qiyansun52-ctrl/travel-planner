@@ -38,6 +38,12 @@ export async function createSession(body: HardConstraints): Promise<PlanningSess
   })
 }
 
+export async function listSessions(limit = 5): Promise<PlanningSession[]> {
+  return fetchJson<PlanningSession[]>(`/api/sessions?limit=${limit}`, {
+    cache: "no-store",
+  })
+}
+
 export async function getSession(sessionId: string): Promise<PlanningSession> {
   return fetchJson<PlanningSession>(`/api/sessions/${sessionId}`, { cache: "no-store" })
 }

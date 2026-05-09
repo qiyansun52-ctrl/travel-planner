@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.models.schemas import HardConstraints, PlanningSession
 from app.routes._shared import repository, require_session, route_error, safe_metric
@@ -27,6 +27,19 @@ async def create_session(hard_constraints: HardConstraints) -> PlanningSession:
         }
     )
     return session
+
+
+@router.get("", response_model=list[PlanningSession])
+async def list_sessions(
+    limit: int = Query(default=5, ge=1, le=20),
+    include_archived: bool = False,
+) -> list[PlanningSession]:
+    repo = repository()
+    try:
+        sessions = await repo.list(include_archived=include_archived)
+    except Exception as exc:
+        raise route_error(exc) from exc
+    return sessions[:limit]
 
 
 @router.get("/{session_id}", response_model=PlanningSession)
