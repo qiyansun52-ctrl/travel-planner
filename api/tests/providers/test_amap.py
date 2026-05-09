@@ -88,6 +88,100 @@ async def test_geocode_maps_redirect_to_network_failure(
     assert error.value.code == "network_failure"
 
 
+async def test_geocode_maps_401_to_auth_failure(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        status_code=401,
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "auth_failure"
+
+
+async def test_geocode_maps_amap_status_failure_to_unknown_failure(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        json={"status": "0", "info": "INVALID_USER_KEY"},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "unknown_failure"
+
+
+async def test_geocode_maps_malformed_json_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        content=b"{",
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
+async def test_geocode_maps_non_dict_json_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        json=[],
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
+async def test_geocode_maps_non_list_geocodes_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        json={"status": "1", "geocodes": {"location": "121.4737,31.2304"}},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
+async def test_geocode_maps_non_dict_first_geocode_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        json={"status": "1", "geocodes": ["not-a-place"]},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
 async def test_search_places_normalizes_pois(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         method="GET",
@@ -112,6 +206,42 @@ async def test_search_places_normalizes_pois(httpx_mock: HTTPXMock) -> None:
     )
 
     assert [p.id for p in places] == ["amap:B0FFG123"]
+
+
+async def test_search_places_maps_non_list_pois_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/place/text.*"),
+        json={"status": "1", "pois": {"id": "B0FFG123"}},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.search_places(
+            PlaceSearchRequest(query="人民广场", country_code="CN", limit=1)
+        )
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
+async def test_search_places_maps_non_dict_poi_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/place/text.*"),
+        json={"status": "1", "pois": ["not-a-place"]},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.search_places(
+            PlaceSearchRequest(query="人民广场", country_code="CN", limit=1)
+        )
+
+    assert error.value.code == "invalid_normalized_payload"
 
 
 async def test_reverse_and_route_are_explicitly_unavailable() -> None:

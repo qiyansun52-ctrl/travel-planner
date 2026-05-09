@@ -48,7 +48,13 @@ class AMapMapProvider:
                 "unknown_failure", body.get("info") or "AMap geocode failed"
             )
 
-        first = (body.get("geocodes") or [None])[0]
+        geocodes = body.get("geocodes", [])
+        if "geocodes" in body and not isinstance(geocodes, list):
+            raise self._invalid_payload_error("AMap geocode payload geocodes is invalid")
+
+        first = (geocodes or [None])[0]
+        if first is not None and not isinstance(first, dict):
+            raise self._invalid_payload_error("AMap geocode payload place is invalid")
         if not first or not first.get("location"):
             raise self._provider_error("unknown_failure", "AMap geocode returned no place")
 
@@ -87,7 +93,16 @@ class AMapMapProvider:
                 "unknown_failure", body.get("info") or "AMap place search failed"
             )
 
-        return [normalize_amap_place(poi) for poi in body.get("pois", [])]
+        pois = body.get("pois", [])
+        if "pois" in body and not isinstance(pois, list):
+            raise self._invalid_payload_error("AMap place search payload pois is invalid")
+        for poi in pois:
+            if not isinstance(poi, dict):
+                raise self._invalid_payload_error(
+                    "AMap place search payload place is invalid"
+                )
+
+        return [normalize_amap_place(poi) for poi in pois]
 
     async def route(self, request: RouteRequest) -> NormalizedRoute:
         raise self._provider_error(
@@ -111,7 +126,18 @@ class AMapMapProvider:
             raise self._provider_error(
                 "network_failure", f"AMap {operation} HTTP {response.status_code}"
             )
-        return response.json()
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise self._invalid_payload_error(
+                f"AMap {operation} returned malformed JSON", exc
+            ) from exc
+
+        if not isinstance(body, dict):
+            raise self._invalid_payload_error(
+                f"AMap {operation} returned non-object JSON"
+            )
+        return body
 
     def _require_api_key(self) -> str:
         if not self._api_key:
@@ -130,6 +156,15 @@ class AMapMapProvider:
             code=code,
             message=message,
             cause=cause,
+        )
+
+    def _invalid_payload_error(
+        self, message: str, cause: object | None = None
+    ) -> ProviderError:
+        return self._provider_error(
+            "invalid_normalized_payload",
+            message,
+            cause,
         )
 
 
