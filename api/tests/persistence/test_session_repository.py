@@ -668,6 +668,10 @@ async def test_concurrent_writes_keep_store_readable(
         *[repository.get(session.session_id) for session in sessions]
     )
 
-    assert all(session is not None for session in loaded)
+    for index, session in enumerate(loaded):
+        assert session is not None
+        assert session.discovery_state is not None
+        assert session.discovery_state.selected_card_ids == [f"card_{index}"]
+
     assert len(await repository.list()) == 8
     json.loads(store_path.read_text(encoding="utf-8"))
