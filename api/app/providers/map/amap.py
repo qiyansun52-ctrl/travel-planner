@@ -107,7 +107,7 @@ class AMapMapProvider:
 
         if response.status_code in (401, 403):
             raise self._provider_error("auth_failure", f"AMap {operation} auth failure")
-        if response.status_code >= 400:
+        if not response.is_success:
             raise self._provider_error(
                 "network_failure", f"AMap {operation} HTTP {response.status_code}"
             )
@@ -134,7 +134,7 @@ class AMapMapProvider:
 
 
 def normalize_amap_place(payload: dict[str, Any]) -> NormalizedPlace:
-    coordinate = convert_gcj02_to_wgs84(_parse_amap_location(str(payload["location"])))
+    coordinate = convert_gcj02_to_wgs84(_parse_amap_location(payload.get("location")))
     stable_id = payload.get("id") or _create_stable_amap_id(payload)
 
     return NormalizedPlace.model_validate(
@@ -154,8 +154,10 @@ def normalize_amap_place(payload: dict[str, Any]) -> NormalizedPlace:
     )
 
 
-def _parse_amap_location(location: str) -> Coordinate:
+def _parse_amap_location(location: object) -> Coordinate:
     try:
+        if not isinstance(location, str):
+            raise ValueError("location must be a string")
         lng_text, lat_text = location.split(",", 1)
         lng = float(lng_text)
         lat = float(lat_text)

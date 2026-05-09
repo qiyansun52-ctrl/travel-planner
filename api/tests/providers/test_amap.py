@@ -36,6 +36,15 @@ def test_normalize_amap_place_converts_gcj02_to_wgs84() -> None:
     assert place.coordinate.lng != 121.4737
 
 
+def test_normalize_amap_place_requires_location() -> None:
+    with pytest.raises(ProviderError) as error:
+        normalize_amap_place({"id": "x", "name": "No location"})
+
+    assert error.value.provider == "amap"
+    assert error.value.kind == "map"
+    assert error.value.code == "invalid_normalized_payload"
+
+
 async def test_geocode_normalizes_first_result(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         method="GET",
@@ -60,6 +69,23 @@ async def test_geocode_normalizes_first_result(httpx_mock: HTTPXMock) -> None:
     assert place.name == "上海"
     assert place.address == "上海市"
     assert place.category == "city"
+
+
+async def test_geocode_maps_redirect_to_network_failure(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://restapi\.amap\.com/v3/geocode/geo.*"),
+        status_code=302,
+        headers={"Location": "https://example.com/login"},
+    )
+    provider = AMapMapProvider(api_key="key")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.geocode(GeocodeRequest(query="上海", country_code="CN"))
+
+    assert error.value.code == "network_failure"
 
 
 async def test_search_places_normalizes_pois(httpx_mock: HTTPXMock) -> None:
