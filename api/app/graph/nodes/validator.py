@@ -36,8 +36,9 @@ async def run_validator_node(state: PlanState) -> GraphState:
             "error_count": sum(issue.severity == "error" for issue in issues),
         },
     )
+    new_event = updated.progress_events[-1]
     return GraphState(
         validator_issues=[issue.model_dump(mode="json") for issue in issues],
         itinerary=itinerary_with_issues.model_dump(mode="json"),
-        progress_events=[event.model_dump(mode="json") for event in updated.progress_events],
+        progress_events=[new_event.model_dump(mode="json")],
     )

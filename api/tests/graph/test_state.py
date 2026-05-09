@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import operator
+from typing import Annotated, Any, get_type_hints
+
 import pytest
 from pydantic import ValidationError
 
@@ -38,6 +41,12 @@ def test_graph_input_from_state_and_validate_graph_state_round_trip_json_dict() 
     assert "__extra_items__" not in raw
     assert "__extra_items__" not in GraphState.__annotations__
     assert restored == state
+
+
+def test_graph_state_progress_events_uses_append_reducer() -> None:
+    hints = get_type_hints(GraphState, include_extras=True)
+
+    assert hints["progress_events"] == Annotated[list[dict[str, Any]], operator.add]
 
 
 def test_validate_graph_state_accepts_plan_state_passthrough() -> None:

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date, timedelta
 
+from app.domain.budget import sum_budget_bands, to_per_trip_band
 from app.graph.nodes.discovery import band, budget_summary
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 from app.models.schemas import (
@@ -30,8 +32,30 @@ async def run_planner_agent(
     active_stay = active_stay_option(stay)
     days = _build_days(session, cards, active_stay, validator_issues)
     currency = session.hard_constraints.currency
-    transport_high = transport.arrival.cost_band.high + transport.departure.cost_band.high
-    stay_high = active_stay.price_band.high
+    room_count = max(1, math.ceil(session.hard_constraints.traveler_count / 2))
+    transport_band = sum_budget_bands(
+        currency,
+        [
+            to_per_trip_band(
+                transport.arrival.cost_band,
+                traveler_count=session.hard_constraints.traveler_count,
+                duration_days=session.hard_constraints.duration_days,
+                room_count=room_count,
+            ),
+            to_per_trip_band(
+                transport.departure.cost_band,
+                traveler_count=session.hard_constraints.traveler_count,
+                duration_days=session.hard_constraints.duration_days,
+                room_count=room_count,
+            ),
+        ],
+    )
+    stay_band = to_per_trip_band(
+        active_stay.price_band,
+        traveler_count=session.hard_constraints.traveler_count,
+        duration_days=session.hard_constraints.duration_days,
+        room_count=room_count,
+    )
     version = (session.itinerary.version if session.itinerary else 0) + 1
 
     return Itinerary(
@@ -41,8 +65,8 @@ async def run_planner_agent(
         budget=budget_summary(
             currency,
             session.hard_constraints.total_budget,
-            transport=band(currency, transport_high * 0.75, transport_high, "per_trip"),
-            stay=band(currency, stay_high * 0.75, stay_high, "per_trip"),
+            transport=transport_band,
+            stay=stay_band,
             food=band(currency, 600, 1100, "per_trip"),
             attractions=band(currency, 200, 700, "per_trip"),
             other=band(currency, 150, 400, "per_trip", "low"),
@@ -76,9 +100,10 @@ async def run_planner_node(state: PlanState) -> GraphState:
         "completed",
         {"version": itinerary.version},
     )
+    new_event = updated.progress_events[-1]
     return GraphState(
         itinerary=itinerary.model_dump(mode="json"),
-        progress_events=[event.model_dump(mode="json") for event in updated.progress_events],
+        progress_events=[new_event.model_dump(mode="json")],
     )
 
 

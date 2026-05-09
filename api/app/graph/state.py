@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import operator
 from datetime import UTC, datetime
-from typing import Any, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -106,7 +107,7 @@ class GraphState(TypedDict, total=False):
     confirmation: dict[str, Any] | None
     reset_to_step: Literal["discovery"] | None
     fork_requested: bool
-    progress_events: list[dict[str, Any]]
+    progress_events: Annotated[list[dict[str, Any]], operator.add]
 
 
 def graph_input_from_state(state: PlanState) -> GraphState:

@@ -16,6 +16,7 @@ from app.models.schemas import (
     Coordinate,
     DiscoveryCard,
     DiscoveryOutput,
+    DiscoveryState,
     FoodSummary,
     NormalizedPlace,
     PlanningSession,
@@ -57,15 +58,30 @@ async def run_discovery_agent(
 async def run_discovery_node(state: PlanState) -> GraphState:
     parsed = validate_graph_state(state)
     output = await run_discovery_agent(parsed.session, fixture_mode=parsed.fixture_mode)
+    selected_card_ids = (
+        parsed.session.discovery_state.selected_card_ids
+        if parsed.session.discovery_state
+        else []
+    )
+    session = parsed.session.model_copy(
+        update={
+            "discovery_state": DiscoveryState(
+                payload=output,
+                selected_card_ids=selected_card_ids,
+            )
+        }
+    )
     updated = append_progress(
-        parsed.model_copy(update={"discovery_output": output}),
+        parsed.model_copy(update={"session": session, "discovery_output": output}),
         "discovery",
         "completed",
         {"card_count": len(output.cards)},
     )
+    new_event = updated.progress_events[-1]
     return GraphState(
+        session=session.model_dump(mode="json"),
         discovery_output=output.model_dump(mode="json"),
-        progress_events=[event.model_dump(mode="json") for event in updated.progress_events],
+        progress_events=[new_event.model_dump(mode="json")],
     )
 
 
@@ -111,7 +127,7 @@ def budget_summary(
         other=other,
         total=total,
         user_budget=user_budget,
-        overrun_flag=total.high > user_budget,
+        overrun_flag=total.high > user_budget * 1.15,
     )
 
 

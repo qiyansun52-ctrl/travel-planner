@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.graph.nodes.discovery import (
+    budget_summary,
     compute_enrichment_status,
     run_discovery_agent,
     run_discovery_node,
@@ -17,7 +18,7 @@ from app.graph.nodes.planner import (
 from app.graph.nodes.stay import run_stay_agent, run_stay_node
 from app.graph.nodes.transport import run_transport_agent, run_transport_node
 from app.graph.nodes.validator import run_validator_node
-from app.graph.state import PlanState
+from app.graph.state import PlanState, append_progress, graph_input_from_state, validate_graph_state
 from app.models.schemas import BudgetBand, DiscoveryOutput
 from tests.graph import fixtures
 
@@ -56,9 +57,25 @@ async def test_run_discovery_node_returns_patch_and_progress() -> None:
     patch = await run_discovery_node(state)
 
     assert patch["discovery_output"]
+    assert patch["session"]["discovery_state"]["payload"] == patch["discovery_output"]
     cards = patch["discovery_output"]["cards"]
     assert patch["progress_events"][-1]["node"] == "discovery"
     assert patch["progress_events"][-1]["payload"]["card_count"] == len(cards)
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_node_session_patch_feeds_downstream_state() -> None:
+    state = PlanState(session=fixtures.session(with_discovery=False), fixture_mode=True)
+    raw = graph_input_from_state(state)
+
+    patch = await run_discovery_node(state)
+    restored = validate_graph_state({**raw, **patch})
+
+    assert restored.session.discovery_state is not None
+    assert restored.session.discovery_state.payload is not None
+    assert len(restored.session.discovery_state.payload.cards) == len(
+        patch["discovery_output"]["cards"]
+    )
 
 
 @pytest.mark.asyncio
@@ -145,6 +162,16 @@ async def test_run_stay_node_returns_patch_and_progress() -> None:
 
 
 @pytest.mark.asyncio
+async def test_node_patch_returns_only_new_progress_event() -> None:
+    state = append_progress(PlanState(session=fixtures.session()), "discovery", "completed")
+
+    patch = await run_stay_node(state)
+
+    assert len(patch["progress_events"]) == 1
+    assert patch["progress_events"][0]["node"] == "stay"
+
+
+@pytest.mark.asyncio
 async def test_run_transport_agent_respects_preferences() -> None:
     transport = await run_transport_agent(fixtures.session())
 
@@ -193,6 +220,18 @@ async def test_run_planner_agent_increments_version_and_builds_days() -> None:
     assert itinerary.version == 3
     assert len(itinerary.days) == session.hard_constraints.duration_days
     assert all(day.segments for day in itinerary.days)
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_converts_budget_bands_to_per_trip() -> None:
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+    )
+
+    assert itinerary.budget.transport.high == 480
+    assert itinerary.budget.stay.high == 2100
 
 
 @pytest.mark.asyncio
@@ -349,3 +388,33 @@ def test_compute_enrichment_status_complete_requires_place_image_and_cost() -> N
     )
 
     assert compute_enrichment_status(card) == "complete"
+
+
+def test_budget_summary_overrun_uses_validator_threshold() -> None:
+    summary = budget_summary(
+        "CNY",
+        1000,
+        transport=fixtures.band(100, 200),
+        stay=fixtures.band(100, 500),
+        food=fixtures.band(50, 150),
+        attractions=fixtures.band(25, 150),
+        other=fixtures.band(25, 150),
+    )
+    over_threshold = summary.model_copy(
+        update={"total": summary.total.model_copy(update={"high": 1151})}
+    )
+    overrun_summary = budget_summary(
+        "CNY",
+        1000,
+        transport=fixtures.band(100, 201),
+        stay=fixtures.band(100, 500),
+        food=fixtures.band(50, 150),
+        attractions=fixtures.band(25, 150),
+        other=fixtures.band(25, 150),
+    )
+
+    assert summary.total.high == 1150
+    assert summary.overrun_flag is False
+    assert over_threshold.total.high > summary.user_budget * 1.15
+    assert overrun_summary.total.high == 1151
+    assert overrun_summary.overrun_flag is True

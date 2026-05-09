@@ -73,7 +73,8 @@ async def run_transport_node(state: PlanState) -> GraphState:
         "completed",
         {"arrival_mode": transport.arrival.mode},
     )
+    new_event = updated.progress_events[-1]
     return GraphState(
         transport_recommendation=transport.model_dump(mode="json"),
-        progress_events=[event.model_dump(mode="json") for event in updated.progress_events],
+        progress_events=[new_event.model_dump(mode="json")],
     )

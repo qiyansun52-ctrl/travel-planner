@@ -66,9 +66,10 @@ async def run_stay_node(state: PlanState) -> GraphState:
         "completed",
         {"primary_area": stay.primary.area.id},
     )
+    new_event = updated.progress_events[-1]
     return GraphState(
         stay_recommendation=stay.model_dump(mode="json"),
-        progress_events=[event.model_dump(mode="json") for event in updated.progress_events],
+        progress_events=[new_event.model_dump(mode="json")],
     )
 
 
