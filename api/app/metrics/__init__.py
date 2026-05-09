@@ -1,6 +1,7 @@
 from app.metrics.events import (
     MetricEventName,
     MetricEventPayload,
+    MetricEventRecord,
     MetricSummary,
     append_metric_event,
     compute_metric_summary,
@@ -11,6 +12,7 @@ from app.metrics.events import (
 __all__ = [
     "MetricEventName",
     "MetricEventPayload",
+    "MetricEventRecord",
     "MetricSummary",
     "append_metric_event",
     "compute_metric_summary",

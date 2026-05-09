@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, Mapping, NotRequired, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 MetricEventName = Literal[
     "step1_submitted",
@@ -31,6 +31,15 @@ class MetricEventPayload(TypedDict):
     created_at: NotRequired[str]
 
 
+class MetricEventRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: MetricEventName
+    session_id: str
+    payload: dict[str, object] = Field(default_factory=dict)
+    created_at: str | None = None
+
+
 class MetricSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -52,8 +61,9 @@ async def append_metric_event(
     event: MetricEventPayload,
     file_path: Path | None = None,
 ) -> None:
+    record = MetricEventRecord.model_validate(dict(event))
     target = file_path or default_metric_file_path()
-    line = json.dumps(_event_with_timestamp(event), ensure_ascii=False) + "\n"
+    line = json.dumps(_event_with_timestamp(record), ensure_ascii=False) + "\n"
     await asyncio.to_thread(_append_line, target, line)
 
 
@@ -74,8 +84,8 @@ def compute_metric_summary(file_path: Path | None = None) -> MetricSummary:
     residual_errors: set[str] = set()
 
     for event in _read_metric_events(file_path or default_metric_file_path()):
-        name = event["name"]
-        session_id = event["session_id"]
+        name = event.name
+        session_id = event.session_id
 
         event_counts[name] = event_counts.get(name, 0) + 1
         if name == "step1_submitted":
@@ -93,11 +103,9 @@ def compute_metric_summary(file_path: Path | None = None) -> MetricSummary:
     )
 
 
-def _event_with_timestamp(event: MetricEventPayload) -> MetricEventPayload:
-    return {
-        **event,
-        "created_at": event.get("created_at") or _utc_timestamp(),
-    }
+def _event_with_timestamp(event: MetricEventRecord) -> dict[str, object]:
+    record = event.model_copy(update={"created_at": event.created_at or _utc_timestamp()})
+    return record.model_dump()
 
 
 def _utc_timestamp() -> str:
@@ -110,14 +118,19 @@ def _append_line(target: Path, line: str) -> None:
         handle.write(line)
 
 
-def _read_metric_events(file_path: Path) -> list[MetricEventPayload]:
+def _read_metric_events(file_path: Path) -> list[MetricEventRecord]:
     try:
-        content = file_path.read_text(encoding="utf-8")
+        lines = file_path.read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
         return []
 
-    return [
-        json.loads(line)
-        for line in (raw_line.strip() for raw_line in content.splitlines())
-        if line
-    ]
+    events: list[MetricEventRecord] = []
+    for line in (raw_line.strip() for raw_line in lines):
+        if not line:
+            continue
+        try:
+            events.append(MetricEventRecord.model_validate(json.loads(line)))
+        except (json.JSONDecodeError, ValidationError):
+            continue
+
+    return events
