@@ -99,6 +99,39 @@ async def test_falls_back_when_primary_times_out() -> None:
     assert place.provider == "mapbox"
 
 
+async def test_caller_cancellation_cancels_active_provider_task() -> None:
+    started = asyncio.Event()
+    cleaned_up = asyncio.Event()
+
+    async def never(_: GeocodeRequest) -> NormalizedPlace:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cleaned_up.set()
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", never),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        },
+    )
+
+    task = asyncio.create_task(
+        registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+    )
+    await started.wait()
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert cleaned_up.is_set()
+
+
 async def test_provider_raised_timeout_is_network_failure_not_registry_timeout() -> None:
     async def provider_timeout(_: GeocodeRequest) -> NormalizedPlace:
         raise TimeoutError("provider timeout")
@@ -119,6 +152,26 @@ async def test_provider_raised_timeout_is_network_failure_not_registry_timeout()
     assert [attempt.provider for attempt in ei.value.attempts] == ["amap", "mapbox"]
     assert ei.value.attempts[0].code == "network_failure"
     assert ei.value.attempts[0].message == "provider timeout"
+
+
+async def test_falls_back_when_primary_is_unhealthy() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider(
+                "amap",
+                lambda request: _async_value(_place("amap")),
+                ok=False,
+            ),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        },
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert place.provider == "mapbox"
 
 
 async def test_falls_back_when_primary_returns_invalid_payload() -> None:

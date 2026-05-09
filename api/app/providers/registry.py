@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
@@ -196,16 +197,17 @@ class TravelDataProviderRegistry:
         operation_name: str,
     ) -> T:
         task = asyncio.create_task(operation())
-        done, pending = await asyncio.wait(
-            {task},
-            timeout=self._operation_timeout_ms / 1000,
-        )
-        if pending:
+        try:
+            return await asyncio.wait_for(
+                task,
+                timeout=self._operation_timeout_ms / 1000,
+            )
+        except asyncio.TimeoutError as exc:
+            if task.done() and not task.cancelled():
+                return task.result()
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
             raise ProviderError(
                 provider=provider,
                 kind=kind,
@@ -214,9 +216,13 @@ class TravelDataProviderRegistry:
                     f"{provider} {operation_name} timed out after "
                     f"{self._operation_timeout_ms}ms"
                 ),
-            )
-
-        return done.pop().result()
+                cause=exc,
+            ) from exc
+        except asyncio.CancelledError:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+            raise
 
 
 def create_provider_registry(
