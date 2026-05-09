@@ -102,6 +102,16 @@ async def test_tavily_search_maps_non_object_json_to_invalid_payload(
     assert ei.value.code == "invalid_normalized_payload"
 
 
+async def test_tavily_search_maps_missing_results_to_invalid_payload(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(method="POST", url="https://api.tavily.com/search", json={})
+    provider = TavilySearchProvider(api_key="key")
+    with pytest.raises(ProviderError) as ei:
+        await provider.search(SearchRequest(query="x"))
+    assert ei.value.code == "invalid_normalized_payload"
+
+
 async def test_tavily_search_maps_invalid_results_shape_to_invalid_payload(
     httpx_mock: HTTPXMock,
 ) -> None:

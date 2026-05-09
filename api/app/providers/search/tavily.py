@@ -67,7 +67,9 @@ class TavilySearchProvider:
             )
 
         body = _decode_tavily_json(response)
-        results = _expect_list(body.get("results"), "Tavily results")
+        if "results" not in body:
+            raise _invalid_payload_error("Tavily results is missing")
+        results = _expect_list(body["results"], "Tavily results")
         normalized: list[SearchResult] = []
         for result in results:
             if not isinstance(result, dict):
