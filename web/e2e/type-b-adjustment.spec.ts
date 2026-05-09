@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test"
 import { completeFixtureTrip } from "./helpers/mvpFlow"
 
-test("completes the fixture-backed MVP flow", async ({ page }) => {
+test("updates stay area after a Type B adjustment", async ({ page }) => {
   await completeFixtureTrip(page)
 
-  await page.getByLabel("Adjustment request").fill("把第二天下午改轻松一点")
+  await page.getByLabel("Adjustment request").fill("酒店换到更安静的区域")
   await page.getByRole("button", { name: "Send adjustment" }).click()
+
   await expect(page.getByText(/Itinerary updated/)).toBeVisible()
+  await expect(page.getByText("Stay area", { exact: true })).toBeVisible()
 })
