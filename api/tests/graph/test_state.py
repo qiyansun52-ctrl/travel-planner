@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.graph.state import (
+    GraphState,
     PlanState,
     TypeCConfirmation,
     append_progress,
@@ -32,6 +33,10 @@ def test_graph_input_from_state_and_validate_graph_state_round_trip_json_dict() 
 
     assert isinstance(raw, dict)
     assert raw["session"]["created_at"] == "2026-05-09T12:00:00Z"
+    assert raw["planner_only_reason"] is None
+    assert raw["discovery_output"] is None
+    assert "__extra_items__" not in raw
+    assert "__extra_items__" not in GraphState.__annotations__
     assert restored == state
 
 

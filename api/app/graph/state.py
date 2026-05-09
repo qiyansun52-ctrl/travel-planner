@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -92,22 +92,21 @@ class GraphState(TypedDict, total=False):
     session: dict[str, Any]
     mode: GraphMode
     fixture_mode: bool
-    planner_only_reason: str
-    adjustment_text: str
-    type_c_action: TypeCAction
-    discovery_output: dict[str, Any]
-    stay_recommendation: dict[str, Any]
-    transport_recommendation: dict[str, Any]
-    itinerary: dict[str, Any]
+    planner_only_reason: str | None
+    adjustment_text: str | None
+    type_c_action: TypeCAction | None
+    discovery_output: dict[str, Any] | None
+    stay_recommendation: dict[str, Any] | None
+    transport_recommendation: dict[str, Any] | None
+    itinerary: dict[str, Any] | None
     validator_issues: list[dict[str, Any]]
     corrective_attempts: int
-    classification: dict[str, Any]
-    message: str
-    confirmation: dict[str, Any]
-    reset_to_step: Literal["discovery"]
+    classification: dict[str, Any] | None
+    message: str | None
+    confirmation: dict[str, Any] | None
+    reset_to_step: Literal["discovery"] | None
     fork_requested: bool
     progress_events: list[dict[str, Any]]
-    __extra_items__: NotRequired[Any]
 
 
 def graph_input_from_state(state: PlanState) -> GraphState:
