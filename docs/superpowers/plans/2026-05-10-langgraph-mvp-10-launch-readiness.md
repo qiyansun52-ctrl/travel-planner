@@ -149,6 +149,13 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
+    for key in sorted(API_ENV_REQUIRED):
+        require_contains(
+            api_readme,
+            key,
+            failures,
+            reason="API env documentation",
+        )
     require_not_contains(
         api_readme,
         "remaining Next.js endpoints are compatibility surfaces",
@@ -403,6 +410,16 @@ with:
 
 ```md
 Legacy scaffold endpoints `/api/discover` and `/api/plan/generate` have been removed from the Python app. There are no Next.js API routes in the canonical product flow after the web cutover; the browser calls these FastAPI routes directly.
+```
+
+Also make sure the `Environment variables` block lists every key in `api/.env.example`, including:
+
+```text
+METRICS_DATA_DIR=.data
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+E2E_FIXTURE_MODE=0
+HOST=0.0.0.0
+PORT=8000
 ```
 
 Also update the Tests section to:

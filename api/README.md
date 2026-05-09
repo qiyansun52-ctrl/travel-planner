@@ -36,6 +36,11 @@ GEMINI_MODEL=gemini-2.5-flash
 AMAP_API_KEY=...
 MAPBOX_ACCESS_TOKEN=...
 SESSION_DATA_DIR=.data
+METRICS_DATA_DIR=.data
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+E2E_FIXTURE_MODE=0
+HOST=0.0.0.0
+PORT=8000
 ```
 
 Provider keys besides Gemini/Tavily are optional during fixture-backed development.

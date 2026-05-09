@@ -104,6 +104,13 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
+    for key in sorted(API_ENV_REQUIRED):
+        require_contains(
+            api_readme,
+            key,
+            failures,
+            reason="API env documentation",
+        )
     require_not_contains(
         api_readme,
         "remaining Next.js endpoints are compatibility surfaces",
