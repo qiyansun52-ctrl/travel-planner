@@ -45,6 +45,19 @@ def test_normalize_amap_place_requires_location() -> None:
     assert error.value.code == "invalid_normalized_payload"
 
 
+def test_normalize_amap_place_wraps_validation_errors() -> None:
+    with pytest.raises(ProviderError) as error:
+        normalize_amap_place(
+            {
+                "id": "x",
+                "name": ["Invalid name"],
+                "location": "121.4737,31.2304",
+            }
+        )
+
+    assert error.value.code == "invalid_normalized_payload"
+
+
 async def test_geocode_normalizes_first_result(httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         method="GET",

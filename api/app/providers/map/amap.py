@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+from pydantic import ValidationError
 
 from app.models.schemas import Coordinate, NormalizedPlace, NormalizedRoute
 from app.providers.map.coord import convert_gcj02_to_wgs84
@@ -172,21 +173,30 @@ def normalize_amap_place(payload: dict[str, Any]) -> NormalizedPlace:
     coordinate = convert_gcj02_to_wgs84(_parse_amap_location(payload.get("location")))
     stable_id = payload.get("id") or _create_stable_amap_id(payload)
 
-    return NormalizedPlace.model_validate(
-        {
-            "id": f"amap:{stable_id}",
-            "name": (
-                payload.get("name")
-                or payload.get("formatted_address")
-                or payload.get("address")
-                or "AMap place"
-            ),
-            "coordinate": coordinate,
-            "address": payload.get("formatted_address") or payload.get("address"),
-            "category": payload.get("category") or payload.get("type"),
-            "provider": "amap",
-        }
-    )
+    try:
+        return NormalizedPlace.model_validate(
+            {
+                "id": f"amap:{stable_id}",
+                "name": (
+                    payload.get("name")
+                    or payload.get("formatted_address")
+                    or payload.get("address")
+                    or "AMap place"
+                ),
+                "coordinate": coordinate,
+                "address": payload.get("formatted_address") or payload.get("address"),
+                "category": payload.get("category") or payload.get("type"),
+                "provider": "amap",
+            }
+        )
+    except ValidationError as exc:
+        raise ProviderError(
+            provider="amap",
+            kind="map",
+            code="invalid_normalized_payload",
+            message="Invalid AMap normalized place payload",
+            cause=exc,
+        ) from exc
 
 
 def _parse_amap_location(location: object) -> Coordinate:
