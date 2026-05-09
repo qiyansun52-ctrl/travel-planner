@@ -85,6 +85,23 @@ async def test_invalid_preference_mutation_is_rejected_before_persistence(
     assert loaded.preferences is None
 
 
+async def test_invalid_conversation_turn_is_rejected_before_persistence(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+
+    with pytest.raises(SessionStoreError):
+        await repository.append_conversation_turn(
+            session.session_id,
+            {"id": "", "raw_text": 123},  # type: ignore[arg-type]
+        )
+
+    loaded = await repository.get(session.session_id)
+    assert loaded is not None
+    assert loaded.conversation_history == []
+
+
 async def test_missing_store_reads_as_empty(tmp_path: Path) -> None:
     repository = FileSessionRepository(tmp_path / "sessions.json")
 

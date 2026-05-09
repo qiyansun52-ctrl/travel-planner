@@ -142,13 +142,14 @@ class FileSessionRepository:
     async def append_conversation_turn(
         self, session_id: str, turn: ConversationTurn
     ) -> PlanningSession:
+        validated_turn = _validate_conversation_turn_for_write(turn)
         return await self._update_active(
             session_id,
             lambda session: session.model_copy(
                 update={
                     "conversation_history": [
                         *session.conversation_history,
-                        turn,
+                        validated_turn,
                     ]
                 }
             ),
@@ -392,6 +393,15 @@ def _validate_itinerary_for_write(itinerary: Itinerary) -> Itinerary:
         return Itinerary.model_validate(_dump_for_validation(itinerary))
     except ValidationError as exc:
         raise SessionStoreError("Mutated itinerary is not a valid Itinerary") from exc
+
+
+def _validate_conversation_turn_for_write(
+    turn: ConversationTurn,
+) -> ConversationTurn:
+    try:
+        return ConversationTurn.model_validate(turn)
+    except ValidationError as exc:
+        raise SessionStoreError("Conversation turn is not valid") from exc
 
 
 def _dump_for_validation(session: PlanningSession | Itinerary) -> dict[str, object]:
