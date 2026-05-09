@@ -35,7 +35,6 @@ TAVILY_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
 AMAP_API_KEY=...
 MAPBOX_ACCESS_TOKEN=...
-WEATHER_PROVIDER_API_KEY=...
 SESSION_DATA_DIR=.data
 ```
 
@@ -62,7 +61,7 @@ Server listens on `http://localhost:8000`. Health check: `http://localhost:8000/
 - `PATCH /api/sessions/{session_id}/stay-override`
 - `POST /api/sessions/{session_id}/adjustments`
 
-Legacy scaffold endpoints `/api/discover` and `/api/plan/generate` have been removed from the Python app. The remaining Next.js endpoints are compatibility surfaces until the web cutover plan points the UI directly at these canonical FastAPI routes.
+Legacy scaffold endpoints `/api/discover` and `/api/plan/generate` have been removed from the Python app. There are no Next.js API routes in the canonical product flow after the web cutover; the browser calls these FastAPI routes directly.
 
 ## Smoke Test
 
@@ -90,6 +89,9 @@ Set `PYTHON_BIN=/path/to/python` when your shell does not expose `python3`.
 
 ```bash
 uv run pytest -v
+uv run ruff check app tests scripts
 ```
+
+From the repository root, `make regression` runs the full web + API gate.
 
 The active implementation plan is `../docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`.

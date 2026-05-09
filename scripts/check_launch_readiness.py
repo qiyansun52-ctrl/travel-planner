@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+
+API_ENV_REQUIRED = {
+    "GEMINI_API_KEY",
+    "TAVILY_API_KEY",
+    "GEMINI_MODEL",
+    "AMAP_API_KEY",
+    "MAPBOX_ACCESS_TOKEN",
+    "SESSION_DATA_DIR",
+    "METRICS_DATA_DIR",
+    "CORS_ORIGINS",
+    "E2E_FIXTURE_MODE",
+    "HOST",
+    "PORT",
+}
+
+WEB_ENV_REQUIRED = {"NEXT_PUBLIC_API_URL"}
+
+WEB_ENV_FORBIDDEN = {
+    "GEMINI_API_KEY",
+    "TAVILY_API_KEY",
+    "LLM_PROVIDER_API_KEY",
+    "SEARCH_PROVIDER_API_KEY",
+    "AMAP_API_KEY",
+    "MAPBOX_ACCESS_TOKEN",
+    "WEATHER_PROVIDER_API_KEY",
+}
+
+
+def parse_env_keys(path: Path, failures: list[str]) -> set[str]:
+    keys: set[str] = set()
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" not in stripped:
+            failures.append(f"{path}: line {line_number} must be KEY=value")
+            continue
+        keys.add(stripped.split("=", 1)[0])
+    return keys
+
+
+def require_contains(
+    path: Path,
+    needle: str,
+    failures: list[str],
+    *,
+    reason: str,
+) -> None:
+    text = path.read_text()
+    if needle not in text:
+        failures.append(f"{path}: missing {needle!r} ({reason})")
+
+
+def require_not_contains(
+    path: Path,
+    needle: str,
+    failures: list[str],
+    *,
+    reason: str,
+) -> None:
+    text = path.read_text()
+    if needle in text:
+        failures.append(f"{path}: remove stale {needle!r} ({reason})")
+
+
+def check_env_examples(failures: list[str]) -> None:
+    api_keys = parse_env_keys(ROOT / "api/.env.example", failures)
+    web_keys = parse_env_keys(ROOT / "web/.env.example", failures)
+
+    missing_api = sorted(API_ENV_REQUIRED - api_keys)
+    if missing_api:
+        failures.append(f"api/.env.example missing keys: {', '.join(missing_api)}")
+
+    missing_web = sorted(WEB_ENV_REQUIRED - web_keys)
+    if missing_web:
+        failures.append(f"web/.env.example missing keys: {', '.join(missing_web)}")
+
+    forbidden_web = sorted(WEB_ENV_FORBIDDEN & web_keys)
+    if forbidden_web:
+        failures.append(
+            "web/.env.example contains backend-only secrets: "
+            + ", ".join(forbidden_web)
+        )
+
+
+def check_docs(failures: list[str]) -> None:
+    root_readme = ROOT / "README.md"
+    api_readme = ROOT / "api/README.md"
+    web_readme = ROOT / "web/README.md"
+    web_dev_doc = ROOT / "web/docs/development-environment.md"
+    launch_checklist = ROOT / "docs/mvp-launch-checklist.md"
+    makefile = ROOT / "Makefile"
+
+    require_contains(root_readme, "api/.env.example", failures, reason="root setup")
+    require_contains(root_readme, "web/.env.example", failures, reason="root setup")
+    require_contains(root_readme, "make regression", failures, reason="root verification")
+    require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
+
+    require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
+    require_not_contains(
+        api_readme,
+        "remaining Next.js endpoints are compatibility surfaces",
+        failures,
+        reason="Plan 7 cutover is complete",
+    )
+
+    require_contains(
+        web_readme,
+        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
+        failures,
+        reason="web env",
+    )
+    require_contains(web_readme, "cd ..\nmake regression", failures, reason="root Makefile")
+    require_contains(
+        web_dev_doc,
+        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
+        failures,
+        reason="web development env",
+    )
+    for key in sorted(WEB_ENV_FORBIDDEN):
+        require_not_contains(
+            web_dev_doc,
+            key,
+            failures,
+            reason="backend-only env does not belong in web docs",
+        )
+
+    require_contains(launch_checklist, "make regression", failures, reason="launch gate")
+    require_contains(
+        launch_checklist,
+        "api/scripts/smoke_curl.sh",
+        failures,
+        reason="root API smoke",
+    )
+    require_not_contains(
+        launch_checklist,
+        "WEATHER_PROVIDER_API_KEY",
+        failures,
+        reason="weather provider is an explicit MVP unavailable fallback",
+    )
+    require_contains(
+        launch_checklist,
+        "E2E_FIXTURE_MODE=1",
+        failures,
+        reason="offline flow",
+    )
+    require_contains(
+        launch_checklist,
+        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
+        failures,
+        reason="frontend API target",
+    )
+
+    require_contains(makefile, "launch-check:", failures, reason="launch gate target")
+    require_contains(
+        makefile,
+        "git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts",
+        failures,
+        reason="generated drift gate",
+    )
+
+
+def main() -> int:
+    failures: list[str] = []
+    check_env_examples(failures)
+    check_docs(failures)
+
+    if failures:
+        for failure in failures:
+            print(f"FAIL: {failure}")
+        return 1
+
+    print("Launch readiness checks passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

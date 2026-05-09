@@ -22,11 +22,12 @@
 
 - Create `scripts/check_launch_readiness.py`: root validation script for env examples, docs, Makefile, and stale text.
 - Modify `Makefile`: add `launch-check` and run it inside `regression`.
-- Modify `api/.env.example`: include backend-owned provider, persistence, metric, fixture, and server env keys.
+- Modify `api/.env.example`: include backend-owned live provider, persistence, metric, fixture, and server env keys.
 - Modify `web/.env.example`: keep only frontend-owned public API URL.
 - Modify `README.md`: add setup, regression, smoke, and fixture-mode launch instructions.
 - Modify `api/README.md`: remove stale Next.js compatibility language and add current regression/lint instructions.
 - Modify `web/README.md`: add `.env.local` guidance that matches the web-only env surface.
+- Modify `web/docs/development-environment.md`: remove stale frontend provider-key setup.
 - Modify `docs/mvp-launch-checklist.md`: align verification and known env setup with Plan 9/10.
 
 ---
@@ -56,7 +57,6 @@ API_ENV_REQUIRED = {
     "GEMINI_MODEL",
     "AMAP_API_KEY",
     "MAPBOX_ACCESS_TOKEN",
-    "WEATHER_PROVIDER_API_KEY",
     "SESSION_DATA_DIR",
     "METRICS_DATA_DIR",
     "CORS_ORIGINS",
@@ -139,13 +139,14 @@ def check_docs(failures: list[str]) -> None:
     root_readme = ROOT / "README.md"
     api_readme = ROOT / "api/README.md"
     web_readme = ROOT / "web/README.md"
+    web_dev_doc = ROOT / "web/docs/development-environment.md"
     launch_checklist = ROOT / "docs/mvp-launch-checklist.md"
     makefile = ROOT / "Makefile"
 
     require_contains(root_readme, "api/.env.example", failures, reason="root setup")
     require_contains(root_readme, "web/.env.example", failures, reason="root setup")
     require_contains(root_readme, "make regression", failures, reason="root verification")
-    require_contains(root_readme, "scripts/smoke_curl.sh", failures, reason="API smoke")
+    require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
     require_not_contains(
@@ -162,8 +163,33 @@ def check_docs(failures: list[str]) -> None:
         reason="web env",
     )
     require_contains(web_readme, "cd ..\nmake regression", failures, reason="root Makefile")
+    require_contains(
+        web_dev_doc,
+        "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
+        failures,
+        reason="web development env",
+    )
+    for key in sorted(WEB_ENV_FORBIDDEN):
+        require_not_contains(
+            web_dev_doc,
+            key,
+            failures,
+            reason="backend-only env does not belong in web docs",
+        )
 
     require_contains(launch_checklist, "make regression", failures, reason="launch gate")
+    require_contains(
+        launch_checklist,
+        "api/scripts/smoke_curl.sh",
+        failures,
+        reason="root API smoke",
+    )
+    require_not_contains(
+        launch_checklist,
+        "WEATHER_PROVIDER_API_KEY",
+        failures,
+        reason="weather provider is an explicit MVP unavailable fallback",
+    )
     require_contains(
         launch_checklist,
         "E2E_FIXTURE_MODE=1",
@@ -268,7 +294,6 @@ TAVILY_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
 AMAP_API_KEY=
 MAPBOX_ACCESS_TOKEN=
-WEATHER_PROVIDER_API_KEY=
 SESSION_DATA_DIR=.data
 METRICS_DATA_DIR=.data
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
@@ -353,11 +378,10 @@ cd api
 E2E_FIXTURE_MODE=1 GEMINI_API_KEY=test-gemini TAVILY_API_KEY=test-tavily uv run uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-In another terminal:
+In another terminal, from the repository root:
 
 ```bash
-cd api
-BASE_URL=http://127.0.0.1:8000 bash scripts/smoke_curl.sh
+BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh
 ```
 
 Expected output starts with `Smoke flow passed for session_`.
@@ -420,7 +444,7 @@ make launch-check
 make regression
 ```
 
-- API smoke section includes `BASE_URL=http://127.0.0.1:8000 bash scripts/smoke_curl.sh`.
+- API smoke section includes `BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh`.
 - Offline fixture note explicitly names `E2E_FIXTURE_MODE=1`.
 
 - [ ] **Step 7: Verify launch checker passes**

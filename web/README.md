@@ -4,6 +4,18 @@ Next.js UI and route shell for the single-city planner. Planning logic, sessions
 
 ## Development
 
+Create the local frontend env file:
+
+```bash
+cp .env.example .env.local
+```
+
+`NEXT_PUBLIC_API_URL` should point at the FastAPI service:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
 ```bash
 cd web
 npm install

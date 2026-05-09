@@ -12,13 +12,16 @@ Single-city travel planning MVP. The target product flow is:
 - `api/`: FastAPI backend that owns Pydantic schemas, sessions, LangGraph planning workflow, provider adapters, metrics, and cost logs.
 - LLM/search stack: `google-genai` with Gemini 2.5 flash, plus Tavily/provider adapters.
 
-After Plan 7, `web/src/app/api/`, `web/src/server/`, and `web/src/domain/` are gone. The browser client calls the Python API routes directly, with `NEXT_PUBLIC_API_URL` defaulting to `http://localhost:8000`.
+`web/src/app/api/`, `web/src/server/`, and `web/src/domain/` are gone. The browser client calls the Python API routes directly through `NEXT_PUBLIC_API_URL`.
 
-The canonical implementation plan is:
+## Environment
 
-```text
-docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md
+```bash
+cp api/.env.example api/.env
+cp web/.env.example web/.env.local
 ```
+
+Live provider-backed runs need real keys in `api/.env`. Fixture-backed regression uses dummy keys and `E2E_FIXTURE_MODE=1`.
 
 ## Development
 
@@ -29,15 +32,9 @@ cd web
 npm run dev
 ```
 
-Run either service by itself:
+Open `http://localhost:3000`.
 
-```bash
-cd web
-npm run dev:web
-npm run dev:api
-```
-
-Or run the API directly:
+Run the API by itself:
 
 ```bash
 cd api
@@ -46,13 +43,32 @@ uv run uvicorn main:app --reload --port 8000
 
 ## Verification
 
-```bash
-cd web
-npm run typecheck
-npm run lint
-npm run test
-npm run build
+From the repo root:
 
-cd ../api
-uv run pytest -v
+```bash
+make launch-check
+make regression
 ```
+
+`make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, and backend ruff.
+
+## API Smoke
+
+In one terminal:
+
+```bash
+cd api
+E2E_FIXTURE_MODE=1 GEMINI_API_KEY=test-gemini TAVILY_API_KEY=test-tavily uv run uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+In another terminal, from the repository root:
+
+```bash
+BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh
+```
+
+Expected output starts with `Smoke flow passed for session_`.
+
+## Planning Docs
+
+The active migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`; Plan 10 is the launch-readiness pass after Plan 9.
