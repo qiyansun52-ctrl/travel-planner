@@ -8,6 +8,7 @@ check-types:
 
 regression:
 	cd web && npm run check:types
+	git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts
 	cd web && npm run lint
 	cd web && npm run test
 	cd web && npm run build

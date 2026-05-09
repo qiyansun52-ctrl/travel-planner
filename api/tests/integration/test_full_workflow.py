@@ -137,3 +137,8 @@ async def test_fixture_full_workflow_type_b_stay_adjustment(
     assert adjusted["classification"]["type"] == "B"
     assert adjusted["classification"]["target_scope"] == "stay"
     assert adjusted["message"] == "Itinerary updated."
+    assert adjusted["session"]["stay_recommendation"]["user_override_id"] == "stay_alt_quiet"
+    assert (
+        adjusted["session"]["itinerary"]["days"][0]["segments"][0]["place"]["name"]
+        == "上海 quieter residential edge"
+    )

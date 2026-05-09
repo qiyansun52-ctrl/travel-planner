@@ -70,7 +70,7 @@ async def test_type_a_workflow_updates_itinerary() -> None:
 
 
 @pytest.mark.asyncio
-async def test_type_b_stay_workflow_reruns_stay_and_clears_override() -> None:
+async def test_type_b_stay_workflow_reruns_stay_and_selects_quiet_area() -> None:
     session = planned_session()
     session = session.model_copy(
         update={
@@ -85,9 +85,11 @@ async def test_type_b_stay_workflow_reruns_stay_and_clears_override() -> None:
     assert result.classification.type == "B"
     assert result.classification.target_scope == "stay"
     assert result.stay is not None
-    assert result.stay.user_override_id is None
+    assert result.stay.user_override_id == "stay_alt_quiet"
     assert result.stay.primary.id == "stay_primary"
     assert result.itinerary is not None
+    assert result.itinerary.days[0].segments[0].place is not None
+    assert result.itinerary.days[0].segments[0].place.name == "上海 French Concession"
 
 
 @pytest.mark.asyncio

@@ -8,5 +8,5 @@ test("updates stay area after a Type B adjustment", async ({ page }) => {
   await page.getByRole("button", { name: "Send adjustment" }).click()
 
   await expect(page.getByText(/Itinerary updated/)).toBeVisible()
-  await expect(page.getByText("Stay area", { exact: true })).toBeVisible()
+  await expect(page.getByText("上海 quieter residential edge")).toBeVisible()
 })

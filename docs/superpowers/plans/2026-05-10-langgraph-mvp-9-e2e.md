@@ -162,6 +162,11 @@ async def test_fixture_workflow_type_b_stay_adjustment(client: httpx.AsyncClient
     assert body["classification"]["type"] == "B"
     assert body["classification"]["target_scope"] == "stay"
     assert body["message"] == "Itinerary updated."
+    assert body["session"]["stay_recommendation"]["user_override_id"] == "stay_alt_quiet"
+    assert (
+        body["session"]["itinerary"]["days"][0]["segments"][0]["place"]["name"]
+        == "上海 quieter residential edge"
+    )
 ```
 
 - [ ] **Step 2: Run the focused integration test to verify current baseline**
@@ -375,7 +380,7 @@ test("replans after a Type B stay adjustment", async ({ page }) => {
   await page.getByRole("button", { name: "Send adjustment" }).click()
 
   await expect(page.getByText(/Itinerary updated/)).toBeVisible()
-  await expect(page.getByText("Stay area")).toBeVisible()
+  await expect(page.getByText("上海 quieter residential edge")).toBeVisible()
 })
 ```
 
@@ -430,6 +435,7 @@ check-types:
 
 regression:
 	cd web && npm run check:types
+	git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts
 	cd web && npm run lint
 	cd web && npm run test
 	cd web && npm run build
@@ -446,6 +452,7 @@ Add to `web/README.md`:
 ## Offline Regression
 
 ```bash
+cd ..
 make regression
 ```
 
