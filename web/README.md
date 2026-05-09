@@ -31,6 +31,17 @@ npm run test:e2e
 
 `npm run test:e2e` starts both services in fixture mode with dummy provider keys.
 
+## Generated Types
+
+Pydantic models in `../api/app/models/schemas.py` are the source of truth for domain types.
+
+```bash
+npm run gen:types
+npm run check:types
+```
+
+`web/src/lib/types.ts` re-exports generated domain types and only keeps frontend-only UI event types.
+
 ## Canonical Flow
 
 ```text
