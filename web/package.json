@@ -11,6 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "gen:types": "cd ../api && uv run python scripts/export_schema.py && cd ../web && node scripts/generate-types.mjs",
+    "check:types": "npm run gen:types && npm run typecheck",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
