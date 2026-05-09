@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable, Mapping
 from uuid import uuid4
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.models.schemas import (
     ConversationTurn,
@@ -61,6 +61,7 @@ class FileSessionRepository:
                 created_at=now,
                 updated_at=now,
             )
+            session = _validate_session_for_write(session)
             store[session.session_id] = session
             await self._write_store(store)
             return session
@@ -208,7 +209,7 @@ class FileSessionRepository:
             original = _require_session(store, session_id)
             _assert_active(original)
             now = _utc_now()
-            store[session_id] = _validate_session_for_write(
+            archived_original = _validate_session_for_write(
                 original.model_copy(
                     update={
                         "status": "archived",
@@ -233,6 +234,8 @@ class FileSessionRepository:
                 created_at=now,
                 updated_at=now,
             )
+            fork = _validate_session_for_write(fork)
+            store[session_id] = archived_original
             store[fork.session_id] = fork
             await self._write_store(store)
             return fork
@@ -396,18 +399,20 @@ def _validate_itinerary_for_write(itinerary: Itinerary) -> Itinerary:
 
 
 def _validate_conversation_turn_for_write(
-    turn: ConversationTurn,
+    turn: ConversationTurn | Mapping[str, object],
 ) -> ConversationTurn:
     try:
-        return ConversationTurn.model_validate(turn)
+        return ConversationTurn.model_validate(_dump_for_validation(turn))
     except ValidationError as exc:
         raise SessionStoreError("Conversation turn is not valid") from exc
 
 
-def _dump_for_validation(session: PlanningSession | Itinerary) -> dict[str, object]:
+def _dump_for_validation(model: BaseModel | Mapping[str, object]) -> dict[str, object]:
+    if not isinstance(model, BaseModel):
+        return dict(model)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        return session.model_dump(mode="json")
+        return model.model_dump(mode="json")
 
 
 def _require_session(store: SessionStore, session_id: str) -> PlanningSession:

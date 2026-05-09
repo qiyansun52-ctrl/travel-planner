@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import get_args
 
 import pytest
 
-from app.models.schemas import HardConstraints
+from app.models.schemas import ConversationTurn, HardConstraints
 from app.persistence import (
     ArchivedSessionMutationError,
     SessionNotFoundError,
@@ -100,6 +101,47 @@ async def test_invalid_conversation_turn_is_rejected_before_persistence(
     loaded = await repository.get(session.session_id)
     assert loaded is not None
     assert loaded.conversation_history == []
+
+
+async def test_invalid_model_copy_conversation_turn_is_rejected_before_persistence(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+    turn = ConversationTurn(
+        id="turn_1",
+        raw_text="Please make the trip quieter",
+        classification=None,
+        created_at=datetime.now(timezone.utc),
+    ).model_copy(update={"raw_text": 123})
+
+    with pytest.raises(SessionStoreError):
+        await repository.append_conversation_turn(session.session_id, turn)
+
+    loaded = await repository.get(session.session_id)
+    assert loaded is not None
+    assert loaded.conversation_history == []
+
+
+async def test_invalid_model_copy_hard_constraints_are_rejected_before_fork_persistence(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    original = await repository.create(hard_constraints())
+    invalid_constraints = hard_constraints().model_copy(
+        update={"duration_days": "many"}
+    )
+
+    with pytest.raises(SessionStoreError):
+        await repository.archive_and_fork(
+            original.session_id,
+            "before invalid duration",
+            invalid_constraints,
+        )
+
+    sessions = await repository.list(include_archived=True)
+    assert [session.session_id for session in sessions] == [original.session_id]
+    assert sessions[0].status == "active"
 
 
 async def test_missing_store_reads_as_empty(tmp_path: Path) -> None:
