@@ -195,12 +195,17 @@ class TravelDataProviderRegistry:
         kind: ProviderKind,
         operation_name: str,
     ) -> T:
-        try:
-            return await asyncio.wait_for(
-                operation(),
-                timeout=self._operation_timeout_ms / 1000,
-            )
-        except asyncio.TimeoutError as exc:
+        task = asyncio.create_task(operation())
+        done, pending = await asyncio.wait(
+            {task},
+            timeout=self._operation_timeout_ms / 1000,
+        )
+        if pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
             raise ProviderError(
                 provider=provider,
                 kind=kind,
@@ -209,8 +214,9 @@ class TravelDataProviderRegistry:
                     f"{provider} {operation_name} timed out after "
                     f"{self._operation_timeout_ms}ms"
                 ),
-                cause=exc,
-            ) from exc
+            )
+
+        return done.pop().result()
 
 
 def create_provider_registry(

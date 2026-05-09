@@ -99,6 +99,28 @@ async def test_falls_back_when_primary_times_out() -> None:
     assert place.provider == "mapbox"
 
 
+async def test_provider_raised_timeout_is_network_failure_not_registry_timeout() -> None:
+    async def provider_timeout(_: GeocodeRequest) -> NormalizedPlace:
+        raise TimeoutError("provider timeout")
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", provider_timeout),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value({"provider": "bad"}),
+            ),
+        },
+    )
+
+    with pytest.raises(ProviderRegistryError) as ei:
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert [attempt.provider for attempt in ei.value.attempts] == ["amap", "mapbox"]
+    assert ei.value.attempts[0].code == "network_failure"
+    assert ei.value.attempts[0].message == "provider timeout"
+
+
 async def test_falls_back_when_primary_returns_invalid_payload() -> None:
     registry = create_provider_registry(
         map_providers={
