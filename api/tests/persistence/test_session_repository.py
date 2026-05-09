@@ -422,6 +422,162 @@ async def test_stay_override_requires_stay_recommendation(
         await repository.update_stay_override(session.session_id, "stay_primary")
 
 
+async def test_reset_to_step_clears_downstream_state_and_preserves_id(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    session = await repository.create(hard_constraints())
+    issue = validator_issue()
+    turn = ConversationTurn(
+        id="turn_1",
+        raw_text="Keep the quieter hotel note.",
+        classification=None,
+        created_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
+    )
+
+    await repository.update_discovery(
+        session.session_id,
+        DiscoveryState(payload=None, selected_card_ids=["card_1"]),
+    )
+    await repository.update_preferences(session.session_id, preferences())
+    await repository.update_stay_recommendation(
+        session.session_id,
+        stay_recommendation(),
+    )
+    await repository.update_transport_recommendation(
+        session.session_id,
+        transport_recommendation(),
+    )
+    await repository.write_itinerary(
+        session.session_id,
+        itinerary(session.session_id),
+        [issue],
+    )
+    await repository.append_conversation_turn(session.session_id, turn)
+
+    reset = await repository.reset_to_step(
+        session.session_id,
+        "discovery",
+        hard_constraints(total_budget=4500),
+    )
+
+    assert reset.session_id == session.session_id
+    assert reset.hard_constraints.total_budget == 4500
+    assert reset.discovery_state is None
+    assert reset.preferences is None
+    assert reset.stay_recommendation is None
+    assert reset.transport_recommendation is None
+    assert reset.itinerary is None
+    assert reset.validator_issues == []
+    assert reset.conversation_history == [turn]
+
+
+async def test_archive_and_fork_archives_original_and_returns_active_child(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    original = await repository.create(hard_constraints())
+
+    fork = await repository.archive_and_fork(
+        original.session_id,
+        "before budget cut",
+        hard_constraints(total_budget=3000),
+    )
+    archived = await repository.get(original.session_id)
+
+    assert archived is not None
+    assert archived.session_id == original.session_id
+    assert archived.status == "archived"
+    assert archived.snapshot_label == "before budget cut"
+    assert fork.status == "active"
+    assert fork.parent_session_id == original.session_id
+    assert fork.hard_constraints.total_budget == 3000
+    assert fork.session_id != original.session_id
+
+
+async def test_archived_sessions_reject_mutations_except_snapshot_label(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    original = await repository.create(hard_constraints())
+    await repository.archive_and_fork(
+        original.session_id,
+        "snapshot",
+        hard_constraints(total_budget=3000),
+    )
+
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.update_discovery(
+            original.session_id,
+            DiscoveryState(payload=None, selected_card_ids=["card_1"]),
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.update_preferences(original.session_id, preferences())
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.update_stay_recommendation(
+            original.session_id,
+            stay_recommendation(),
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.update_transport_recommendation(
+            original.session_id,
+            transport_recommendation(),
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.write_itinerary(
+            original.session_id,
+            itinerary(original.session_id),
+            [validator_issue()],
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.append_conversation_turn(
+            original.session_id,
+            ConversationTurn(
+                id="turn_1",
+                raw_text="Can we make this cheaper?",
+                classification=None,
+                created_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
+            ),
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.update_stay_override(
+            original.session_id,
+            "stay_primary",
+        )
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.reset_to_step(original.session_id, "intake")
+
+    relabeled = await repository.update_snapshot_label(
+        original.session_id,
+        "final snapshot",
+    )
+
+    assert relabeled.status == "archived"
+    assert relabeled.snapshot_label == "final snapshot"
+
+
+async def test_archive_and_fork_rejects_archived_original(
+    tmp_path: Path,
+) -> None:
+    repository = FileSessionRepository(tmp_path / "sessions.json")
+    original = await repository.create(hard_constraints())
+    await repository.archive_and_fork(
+        original.session_id,
+        "snapshot",
+        hard_constraints(total_budget=3000),
+    )
+
+    with pytest.raises(ArchivedSessionMutationError, match="archived"):
+        await repository.archive_and_fork(
+            original.session_id,
+            "second snapshot",
+            hard_constraints(total_budget=2000),
+        )
+
+    sessions = await repository.list(include_archived=True)
+    assert len(sessions) == 2
+
+
 async def test_missing_session_mutation_raises_not_found(tmp_path: Path) -> None:
     repository = FileSessionRepository(tmp_path / "sessions.json")
 
