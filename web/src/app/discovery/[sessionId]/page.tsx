@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { DiscoveryBoard } from "@/components/discovery/DiscoveryBoard"
 import { getSession, runDiscovery, updateSelectedCards } from "@/lib/apiClient"
@@ -11,21 +11,36 @@ export default function DiscoveryPage() {
   const router = useRouter()
   const [session, setSession] = useState<PlanningSession | null>(null)
   const [error, setError] = useState("")
+  const loadRef = useRef<{ sessionId: string; promise: Promise<PlanningSession> } | null>(null)
 
   useEffect(() => {
     let active = true
-    async function load() {
-      try {
-        const current = await getSession(sessionId)
-        const withDiscovery = current.discovery_state?.payload
-          ? current
-          : await runDiscovery(sessionId)
-        if (active) setSession(withDiscovery)
-      } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : "Discovery failed")
-      }
+
+    async function createLoadPromise() {
+      const current = await getSession(sessionId)
+      return current.discovery_state?.payload ? current : await runDiscovery(sessionId)
     }
-    void load()
+
+    const existing = loadRef.current
+    const promise =
+      existing?.sessionId === sessionId
+        ? existing.promise
+        : createLoadPromise()
+    loadRef.current = { sessionId, promise }
+
+    promise
+      .then((withDiscovery) => {
+        if (active) {
+          setError("")
+          setSession(withDiscovery)
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : "Discovery failed")
+        }
+      })
+
     return () => {
       active = false
     }

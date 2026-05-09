@@ -11,7 +11,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Awaitable, Callable
 
 import pytest
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.llm.client import (
     GeminiLLMProvider,
@@ -30,6 +30,11 @@ class _Output(BaseModel):
     message: str
 
 
+class _PositiveOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    count: int = Field(gt=0)
+
+
 # ---------- helpers ----------
 
 @dataclass
@@ -39,8 +44,20 @@ class FakeProvider:
     handler: Callable[..., Awaitable[str]]
     calls: list[dict] = field(default_factory=list)
 
-    async def generate(self, *, system: str, user: str, timeout_ms: int) -> str:
-        self.calls.append({"system": system, "user": user, "timeout_ms": timeout_ms})
+    async def generate(
+        self,
+        *,
+        system: str,
+        user: str,
+        timeout_ms: int,
+        schema: type[BaseModel] | None = None,
+    ) -> str:
+        self.calls.append({
+            "system": system,
+            "user": user,
+            "timeout_ms": timeout_ms,
+            "schema": schema,
+        })
         return await self.handler(system=system, user=user, timeout_ms=timeout_ms)
 
 
@@ -58,17 +75,22 @@ async def test_returns_validated_pydantic_model_and_logs_cost() -> None:
     async def ok(**_: object) -> str:
         return '{"message":"hello"}'
 
+    provider = FakeProvider(handler=ok)
     result = await generate_structured(
         system="You return JSON.",
         user="Say hello.",
         schema=_Output,
         label="unit.success",
-        provider=FakeProvider(handler=ok),
+        provider=provider,
         cost_logger=_capturing_logger(entries),
         retry=RetryOptions(base_delay_ms=0),
     )
 
     assert result == _Output(message="hello")
+    assert provider.calls[0]["system"].startswith("You return JSON.")
+    assert "JSON Schema" in provider.calls[0]["system"]
+    assert '"message"' in provider.calls[0]["system"]
+    assert provider.calls[0]["schema"] is _Output
     assert len(entries) == 1
     assert entries[0].label == "unit.success"
     assert entries[0].success is True
@@ -125,6 +147,32 @@ async def test_retries_transient_then_succeeds_and_records_retry_count() -> None
         cost_logger=_capturing_logger(entries),
         retry=RetryOptions(base_delay_ms=0),
     )
+    assert result.message == "recovered"
+    assert state["calls"] == 2
+    assert entries[0].success is True
+    assert entries[0].retry_count == 1
+
+
+async def test_retries_schema_validation_failure_then_succeeds() -> None:
+    entries: list[LLMCostLogEntry] = []
+    state = {"calls": 0}
+
+    async def flaky_json(**_: object) -> str:
+        state["calls"] += 1
+        if state["calls"] == 1:
+            return '{"wrong":"shape"}'
+        return '{"message":"recovered"}'
+
+    result = await generate_structured(
+        system="s",
+        user="u",
+        schema=_Output,
+        label="unit.schema_retry",
+        provider=FakeProvider(handler=flaky_json),
+        cost_logger=_capturing_logger(entries),
+        retry=RetryOptions(base_delay_ms=0),
+    )
+
     assert result.message == "recovered"
     assert state["calls"] == 2
     assert entries[0].success is True
@@ -253,20 +301,82 @@ async def test_gemini_generate_returns_json_and_closes_async_client(
     monkeypatch.setitem(sys.modules, "google.genai.types", types_module)
 
     provider = GeminiLLMProvider(api_key="test-key", model="test-model")
-    result = await provider.generate(system="sys", user="usr", timeout_ms=1000)
+    result = await provider.generate(
+        system="sys",
+        user="usr",
+        timeout_ms=1000,
+        schema=_Output,
+    )
 
     assert result == '{"message":"from gemini"}'
-    assert calls == [
-        {
-            "model": "test-model",
-            "contents": "usr",
-            "config": SimpleNamespace(
-                system_instruction="sys",
-                response_mime_type="application/json",
-            ),
-        }
-    ]
+    assert len(calls) == 1
+    assert calls[0]["model"] == "test-model"
+    assert calls[0]["contents"] == "usr"
+    config = calls[0]["config"]
+    assert config.system_instruction == "sys"
+    assert config.response_mime_type == "application/json"
+    assert config.response_schema["properties"]["message"]["type"] == "string"
+    assert "additionalProperties" not in str(config.response_schema)
     assert closed["value"] is True
+
+
+async def test_gemini_generate_sanitizes_pydantic_schema_for_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeAPIError(Exception):
+        pass
+
+    class FakeModels:
+        async def generate_content(self, **kwargs: object) -> SimpleNamespace:
+            calls.append(kwargs)
+            return SimpleNamespace(text='{"count":1}')
+
+    class FakeAio:
+        def __init__(self) -> None:
+            self.models = FakeModels()
+
+        async def aclose(self) -> None:
+            return None
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            self.api_key = api_key
+            self.aio = FakeAio()
+
+    def fake_generate_content_config(**kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(**kwargs)
+
+    google_module = ModuleType("google")
+    genai_module = ModuleType("google.genai")
+    errors_module = ModuleType("google.genai.errors")
+    types_module = ModuleType("google.genai.types")
+
+    genai_module.Client = FakeClient
+    errors_module.APIError = FakeAPIError
+    types_module.GenerateContentConfig = fake_generate_content_config
+    genai_module.errors = errors_module
+    genai_module.types = types_module
+    google_module.genai = genai_module
+
+    monkeypatch.setitem(sys.modules, "google", google_module)
+    monkeypatch.setitem(sys.modules, "google.genai", genai_module)
+    monkeypatch.setitem(sys.modules, "google.genai.errors", errors_module)
+    monkeypatch.setitem(sys.modules, "google.genai.types", types_module)
+
+    provider = GeminiLLMProvider(api_key="test-key", model="test-model")
+    await provider.generate(
+        system="sys",
+        user="usr",
+        timeout_ms=1000,
+        schema=_PositiveOutput,
+    )
+
+    response_schema = calls[0]["config"].response_schema
+    assert "exclusiveMinimum" not in str(response_schema)
+    assert "additionalProperties" not in str(response_schema)
+    assert response_schema["properties"]["count"]["minimum"] == 0
 
 
 async def test_gemini_generate_preserves_api_error_when_close_fails(

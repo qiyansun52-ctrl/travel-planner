@@ -47,6 +47,32 @@ async def test_run_discovery_is_idempotent_and_logs_metrics(
     assert "discovery_enrichment_summary" in names
 
 
+async def test_run_discovery_returns_concurrent_success_when_late_request_fails(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    import app.routes.discovery as discovery_route
+    from app.models.schemas import DiscoveryState
+
+    session_id = await create_session(client)
+    original_run_discovery_agent = discovery_route.run_discovery_agent
+
+    async def late_loser(session, **_: object):
+        payload = await original_run_discovery_agent(session, fixture_mode=True)
+        await discovery_route.repository().update_discovery(
+            session.session_id,
+            DiscoveryState(payload=payload, selected_card_ids=[]),
+        )
+        raise RuntimeError("late loser")
+
+    monkeypatch.setattr(discovery_route, "run_discovery_agent", late_loser)
+
+    response = await client.post(f"/api/sessions/{session_id}/discovery")
+
+    assert response.status_code == 200
+    assert response.json()["discovery_state"]["payload"]["cards"]
+
+
 async def test_update_selection_dedupes_ids(client: httpx.AsyncClient) -> None:
     session_id = await create_session(client)
     await client.post(f"/api/sessions/{session_id}/discovery")

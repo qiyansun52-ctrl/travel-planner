@@ -10,7 +10,7 @@ import contextlib
 import json
 import os
 import time
-from typing import Mapping, Protocol, TypeVar
+from typing import Mapping, Protocol, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
 
@@ -24,6 +24,7 @@ from app.llm.json_repair import JsonRepairError, parse_json_with_repair
 from app.llm.retry import (
     RetryExhaustedError,
     RetryOptions,
+    is_transient_network_error,
     with_retry,
 )
 
@@ -78,7 +79,14 @@ class LLMJsonParseError(Exception):
 # ---------- Provider Protocol ----------
 
 class LLMProvider(Protocol):
-    async def generate(self, *, system: str, user: str, timeout_ms: int) -> str: ...
+    async def generate(
+        self,
+        *,
+        system: str,
+        user: str,
+        timeout_ms: int,
+        schema: type[BaseModel] | None = None,
+    ) -> str: ...
 
 
 # ---------- Public facade ----------
@@ -95,6 +103,7 @@ async def generate_structured(
     retry: RetryOptions | None = None,
 ) -> M:
     chosen_provider = provider or create_default_provider()
+    effective_system = _system_with_schema(system, schema)
     started = time.perf_counter()
     completion = ""
     retry_count = 0
@@ -102,24 +111,28 @@ async def generate_structured(
     failure: str | None = None
 
     try:
-        async def _call() -> str:
-            return await _with_timeout(
-                chosen_provider.generate(system=system, user=user, timeout_ms=timeout_ms),
+        async def _call() -> M:
+            nonlocal completion
+
+            completion = await _with_timeout(
+                chosen_provider.generate(
+                    system=effective_system,
+                    user=user,
+                    timeout_ms=timeout_ms,
+                    schema=schema,
+                ),
                 timeout_ms=timeout_ms,
             )
+            parsed = _parse_llm_json(completion)
+            try:
+                return schema.model_validate(parsed)
+            except ValidationError as ve:
+                raise LLMJsonParseError("LLM JSON failed schema validation", cause=ve) from ve
 
-        result = await with_retry(_call, retry)
-        completion = result.value
+        result = await with_retry(_call, _structured_retry_options(retry))
         retry_count = result.retry_count
-
-        parsed = _parse_llm_json(completion)
-        try:
-            validated = schema.model_validate(parsed)
-        except ValidationError as ve:
-            raise LLMJsonParseError("LLM JSON failed schema validation", cause=ve) from ve
-
         success = True
-        return validated
+        return result.value
     except RetryExhaustedError as exhausted:
         retry_count = exhausted.retry_count
         failure = str(exhausted.cause)
@@ -131,7 +144,7 @@ async def generate_structured(
         duration_ms = int((time.perf_counter() - started) * 1000)
         entry = create_cost_log_entry(
             label=label,
-            system=system,
+            system=effective_system,
             user=user,
             completion=completion,
             duration_ms=duration_ms,
@@ -166,7 +179,14 @@ class GeminiLLMProvider:
         self._api_key = api_key
         self._model = model
 
-    async def generate(self, *, system: str, user: str, timeout_ms: int) -> str:
+    async def generate(
+        self,
+        *,
+        system: str,
+        user: str,
+        timeout_ms: int,
+        schema: type[BaseModel] | None = None,
+    ) -> str:
         # Lazy import keeps unit tests free of SDK imports unless explicitly used.
         from google import genai
         from google.genai import errors as genai_errors
@@ -176,6 +196,7 @@ class GeminiLLMProvider:
         config = genai_types.GenerateContentConfig(
             system_instruction=system,
             response_mime_type="application/json",
+            response_schema=_provider_response_schema(schema) if schema else None,
         )
         try:
             response = await client.aio.models.generate_content(
@@ -224,6 +245,62 @@ def _parse_llm_json(raw: str) -> object:
                 "LLM returned invalid JSON",
                 cause={"initial": str(initial), "repair": str(repair)},
             ) from repair
+
+
+def _system_with_schema(system: str, schema: type[BaseModel]) -> str:
+    schema_json = json.dumps(
+        schema.model_json_schema(),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return (
+        f"{system.strip()}\n\n"
+        "Return only one JSON value that validates against this JSON Schema. "
+        "Do not include markdown, prose, comments, or keys not allowed by the schema.\n"
+        f"{schema_json}"
+    )
+
+
+def _provider_response_schema(schema: type[BaseModel]) -> dict[str, object]:
+    return cast(dict[str, object], _sanitize_provider_schema(schema.model_json_schema()))
+
+
+def _sanitize_provider_schema(value: object) -> object:
+    if isinstance(value, dict):
+        sanitized: dict[str, object] = {}
+        for key, item in value.items():
+            if key == "exclusiveMinimum":
+                sanitized.setdefault("minimum", _sanitize_provider_schema(item))
+                continue
+            if key == "exclusiveMaximum":
+                sanitized.setdefault("maximum", _sanitize_provider_schema(item))
+                continue
+            if key in {"$schema", "additionalProperties", "additional_properties", "examples"}:
+                continue
+            sanitized[key] = _sanitize_provider_schema(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_provider_schema(item) for item in value]
+    return value
+
+
+def _structured_retry_options(retry: RetryOptions | None) -> RetryOptions:
+    if retry is None:
+        return RetryOptions(should_retry=_should_retry_structured_generation)
+    if retry.should_retry is not None:
+        return retry
+    return RetryOptions(
+        max_retries=retry.max_retries,
+        base_delay_ms=retry.base_delay_ms,
+        max_delay_ms=retry.max_delay_ms,
+        should_retry=_should_retry_structured_generation,
+    )
+
+
+def _should_retry_structured_generation(error: Exception) -> bool:
+    if isinstance(error, LLMJsonParseError):
+        return True
+    return is_transient_network_error(error)
 
 
 async def _safe_log(logger: LLMCostLogger, entry: LLMCostLogEntry) -> None:

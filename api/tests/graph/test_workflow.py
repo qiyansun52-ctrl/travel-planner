@@ -153,7 +153,7 @@ async def test_warning_only_validation_does_not_rerun_planner(monkeypatch) -> No
 
 @pytest.mark.asyncio
 async def test_full_workflow_uses_session_hydrated_by_separate_discovery_node() -> None:
-    initial = PlanState(session=fixtures.session(with_discovery=False))
+    initial = PlanState(session=fixtures.session(with_discovery=False), fixture_mode=True)
     discovered = await run_discovery_node(initial)
     hydrated = validate_graph_state({**graph_input_from_state(initial), **discovered})
 

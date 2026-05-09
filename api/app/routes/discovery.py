@@ -31,7 +31,12 @@ async def run_discovery(session_id: str) -> PlanningSession:
             DiscoveryState(payload=payload, selected_card_ids=[]),
         )
     except Exception as exc:
-        raise route_error(exc) from exc
+        latest = await repo.get(session_id)
+        if latest and latest.discovery_state and latest.discovery_state.payload:
+            updated = latest
+            payload = latest.discovery_state.payload
+        else:
+            raise route_error(exc) from exc
 
     counts = {"complete_count": 0, "partial_count": 0, "minimal_count": 0}
     for card in payload.cards:
