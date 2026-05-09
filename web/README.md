@@ -31,6 +31,17 @@ npm run test:e2e
 
 `npm run test:e2e` starts both services in fixture mode with dummy provider keys.
 
+## Offline Regression
+
+```bash
+cd ..
+make regression
+```
+
+The regression target runs generated-type drift checks, frontend lint/unit/build/e2e,
+and backend pytest/ruff. Playwright starts FastAPI with `E2E_FIXTURE_MODE=1`, dummy
+provider keys, temp session storage, and CORS configured for `127.0.0.1:3000`.
+
 ## Generated Types
 
 Pydantic models in `../api/app/models/schemas.py` are the source of truth for domain types.
