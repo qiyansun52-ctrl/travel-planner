@@ -8,10 +8,10 @@ from app.graph.state import GraphState, PlanState, append_progress, validate_gra
 
 async def run_validator_node(state: PlanState) -> GraphState:
     parsed = validate_graph_state(state)
-    itinerary = parsed.itinerary or parsed.session.itinerary
-    if itinerary is None:
+    if parsed.itinerary is None:
         raise ValueError("run_validator_node requires itinerary")
 
+    itinerary = parsed.itinerary
     payload = (
         parsed.session.discovery_state.payload
         if parsed.session.discovery_state and parsed.session.discovery_state.payload
