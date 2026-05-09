@@ -5,12 +5,13 @@ import { useParams } from "next/navigation"
 import { AdjustmentPanel } from "@/components/chat/AdjustmentPanel"
 import { ItineraryView } from "@/components/itinerary/ItineraryView"
 import { PlanningProgress } from "@/components/itinerary/PlanningProgress"
-import { getSession, runItinerary, updateStayOverride } from "@/lib/apiClient"
-import type { PlanningSession } from "@/lib/types"
+import { getSession, streamItinerary, updateStayOverride } from "@/lib/apiClient"
+import type { PlanningProgressEvent, PlanningSession } from "@/lib/types"
 
 export default function TripPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const [session, setSession] = useState<PlanningSession | null>(null)
+  const [progressEvents, setProgressEvents] = useState<PlanningProgressEvent[]>([])
   const [planning, setPlanning] = useState(false)
   const [error, setError] = useState("")
 
@@ -23,8 +24,15 @@ export default function TripPage() {
           if (active) setSession(current)
           return
         }
-        if (active) setPlanning(true)
-        const planned = await runItinerary(sessionId)
+        if (active) {
+          setPlanning(true)
+          setProgressEvents([])
+        }
+        const planned = await streamItinerary(sessionId, {
+          onProgress: (event) => {
+            if (active) setProgressEvents((events) => [...events, event])
+          },
+        })
         if (active) setSession(planned)
       } catch (loadError) {
         if (active) setError(loadError instanceof Error ? loadError.message : "Planning failed")
@@ -49,7 +57,7 @@ export default function TripPage() {
     <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-950">
       <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[1fr_360px]">
         <section className="space-y-5">
-          <PlanningProgress active={planning || !session?.itinerary} />
+          <PlanningProgress active={planning || !session?.itinerary} events={progressEvents} />
           {session?.itinerary ? (
             <ItineraryView session={session} onStayOverride={handleStayOverride} />
           ) : (
