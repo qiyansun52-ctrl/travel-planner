@@ -308,7 +308,7 @@ git commit -m "chore: add fixture smoke gate"
 **Files:**
 - No planned file changes unless verification finds a regression.
 
-- [ ] **Step 1: Run full regression**
+- [x] **Step 1: Run full regression**
 
 Run:
 
@@ -325,7 +325,7 @@ Expected:
 - fixture API smoke prints `Smoke flow passed for session_`.
 - Playwright e2e passes.
 
-- [ ] **Step 2: Verify repository state**
+- [x] **Step 2: Verify repository state**
 
 Run:
 
@@ -336,7 +336,7 @@ git diff --check origin/feature/mvp-web-app...HEAD
 
 Expected: clean working tree and no whitespace errors.
 
-- [ ] **Step 3: Commit acceptance fixes only if needed**
+- [x] **Step 3: Commit acceptance fixes only if needed**
 
 If verification required changes:
 
