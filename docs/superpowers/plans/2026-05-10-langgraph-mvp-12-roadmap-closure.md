@@ -153,7 +153,7 @@ git commit -m "docs: close MVP roadmap status"
 **Files:**
 - Modify: `scripts/check_launch_readiness.py`
 
-- [ ] **Step 1: Add path assertion helpers**
+- [x] **Step 1: Add path assertion helpers**
 
 Add these helpers below `require_not_contains`:
 
@@ -168,7 +168,7 @@ def require_path_not_exists(path: Path, failures: list[str], *, reason: str) -> 
         failures.append(f"{path}: should not exist ({reason})")
 ```
 
-- [ ] **Step 2: Add roadmap/doc assertions**
+- [x] **Step 2: Add roadmap/doc assertions**
 
 Inside `check_docs`, define:
 
@@ -211,7 +211,7 @@ Then add these assertions near the existing docs checks:
     )
 ```
 
-- [ ] **Step 3: Add roadmap DoD assertions**
+- [x] **Step 3: Add roadmap DoD assertions**
 
 Add these assertions near the end of `check_docs`:
 
@@ -252,7 +252,7 @@ Add these assertions near the end of `check_docs`:
     )
 ```
 
-- [ ] **Step 4: Verify checker fails before docs commit only if docs are incomplete**
+- [x] **Step 4: Verify checker fails before docs commit only if docs are incomplete**
 
 Run:
 
@@ -262,7 +262,7 @@ make launch-check
 
 Expected after Task 1 + Task 2: `Launch readiness checks passed.`
 
-- [ ] **Step 5: Commit checker**
+- [x] **Step 5: Commit checker**
 
 ```bash
 git add scripts/check_launch_readiness.py

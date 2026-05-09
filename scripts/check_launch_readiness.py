@@ -70,6 +70,16 @@ def require_not_contains(
         failures.append(f"{path}: remove stale {needle!r} ({reason})")
 
 
+def require_path_exists(path: Path, failures: list[str], *, reason: str) -> None:
+    if not path.exists():
+        failures.append(f"{path}: missing ({reason})")
+
+
+def require_path_not_exists(path: Path, failures: list[str], *, reason: str) -> None:
+    if path.exists():
+        failures.append(f"{path}: should not exist ({reason})")
+
+
 def check_env_examples(failures: list[str]) -> None:
     api_keys = parse_env_keys(ROOT / "api/.env.example", failures)
     web_keys = parse_env_keys(ROOT / "web/.env.example", failures)
@@ -96,12 +106,25 @@ def check_docs(failures: list[str]) -> None:
     web_readme = ROOT / "web/README.md"
     web_dev_doc = ROOT / "web/docs/development-environment.md"
     launch_checklist = ROOT / "docs/mvp-launch-checklist.md"
+    roadmap = ROOT / "docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md"
     makefile = ROOT / "Makefile"
 
     require_contains(root_readme, "api/.env.example", failures, reason="root setup")
     require_contains(root_readme, "web/.env.example", failures, reason="root setup")
     require_contains(root_readme, "make regression", failures, reason="root verification")
     require_contains(root_readme, "make smoke", failures, reason="root API smoke")
+    require_contains(
+        root_readme,
+        "Plan 1-9 are complete; Plan 10-12 are post-roadmap hardening passes",
+        failures,
+        reason="root planning status",
+    )
+    require_not_contains(
+        root_readme,
+        "Plan 10 is the launch-readiness pass after Plan 9",
+        failures,
+        reason="stale planning status",
+    )
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
     for key in sorted(API_ENV_REQUIRED):
@@ -123,6 +146,18 @@ def check_docs(failures: list[str]) -> None:
         failures,
         reason="API smoke runner",
     )
+    require_contains(
+        api_readme,
+        "post-roadmap hardening plans live beside it as Plan 10+",
+        failures,
+        reason="API planning status",
+    )
+    require_not_contains(
+        api_readme,
+        "2026-05-09-langgraph-single-city-mvp.md",
+        failures,
+        reason="old implementation plan pointer",
+    )
 
     require_contains(
         web_readme,
@@ -131,6 +166,12 @@ def check_docs(failures: list[str]) -> None:
         reason="web env",
     )
     require_contains(web_readme, "cd ..\nmake regression", failures, reason="root Makefile")
+    require_contains(
+        web_readme,
+        "fixture-backed API smoke",
+        failures,
+        reason="web regression docs",
+    )
     require_contains(
         web_dev_doc,
         "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
@@ -184,6 +225,40 @@ def check_docs(failures: list[str]) -> None:
         "git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts",
         failures,
         reason="generated drift gate",
+    )
+    require_contains(
+        roadmap,
+        "**STATUS: COMPLETED (2026-05-10)**",
+        failures,
+        reason="roadmap closure status",
+    )
+    require_contains(
+        roadmap,
+        "- [x] Plan 1-9 全部 DoD 通过",
+        failures,
+        reason="roadmap DoD closure",
+    )
+    require_contains(
+        roadmap,
+        "`make regression` 跑通",
+        failures,
+        reason="current regression command",
+    )
+    require_not_contains(
+        roadmap,
+        "`npm run regression` 跑通",
+        failures,
+        reason="stale regression command",
+    )
+    require_path_not_exists(
+        ROOT / "web/src/server",
+        failures,
+        reason="Plan 7 cutover removed server code",
+    )
+    require_path_exists(
+        ROOT / "api/app/graph",
+        failures,
+        reason="LangGraph workflow package",
     )
 
 
