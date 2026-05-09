@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
-import sys
+import importlib.util
 from pathlib import Path
 
-API_ROOT = Path(__file__).resolve().parents[2]
-if str(API_ROOT) not in sys.path:
-    sys.path.insert(0, str(API_ROOT))
+EXPORT_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "scripts" / "export_schema.py"
+spec = importlib.util.spec_from_file_location("export_schema", EXPORT_SCHEMA_PATH)
+assert spec is not None
+assert spec.loader is not None
+export_schema_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(export_schema_module)
 
-from scripts.export_schema import build_schema_document, export_schema
+build_schema_document = export_schema_module.build_schema_document
+export_schema = export_schema_module.export_schema
 
 
 def test_build_schema_document_includes_frontend_root_models() -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from importlib import import_module
 from pathlib import Path
 from typing import TypeAlias
 
@@ -11,71 +12,47 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from app.models.schemas import (
-    AdjustmentRequest,
-    AreaSummary,
-    BudgetBand,
-    BudgetSummary,
-    ConversationTurn,
-    Coordinate,
-    DiscoveryCard,
-    DiscoveryOutput,
-    DiscoveryState,
-    FoodSummary,
-    HardConstraints,
-    IntracityStrategy,
-    Itinerary,
-    ItineraryDay,
-    ItinerarySegment,
-    NormalizedPlace,
-    NormalizedRoute,
-    PlanningSession,
-    Preference,
-    SampleHotel,
-    SourceNote,
-    StayOption,
-    StayRecommendation,
-    TransportLeg,
-    TransportRecommendation,
-    ValidatorIssue,
-)
-
 SchemaModel: TypeAlias = type[BaseModel]
 DEFAULT_OUTPUT = API_ROOT / "dist" / "schema.json"
 
-ROOT_MODELS: tuple[SchemaModel, ...] = (
-    Coordinate,
-    NormalizedPlace,
-    BudgetBand,
-    NormalizedRoute,
-    DiscoveryCard,
-    AreaSummary,
-    FoodSummary,
-    SourceNote,
-    BudgetSummary,
-    DiscoveryOutput,
-    SampleHotel,
-    StayOption,
-    StayRecommendation,
-    TransportLeg,
-    IntracityStrategy,
-    TransportRecommendation,
-    ValidatorIssue,
-    ItinerarySegment,
-    ItineraryDay,
-    Itinerary,
-    HardConstraints,
-    Preference,
-    AdjustmentRequest,
-    ConversationTurn,
-    DiscoveryState,
-    PlanningSession,
+ROOT_MODEL_NAMES: tuple[str, ...] = (
+    "Coordinate",
+    "NormalizedPlace",
+    "BudgetBand",
+    "NormalizedRoute",
+    "DiscoveryCard",
+    "AreaSummary",
+    "FoodSummary",
+    "SourceNote",
+    "BudgetSummary",
+    "DiscoveryOutput",
+    "SampleHotel",
+    "StayOption",
+    "StayRecommendation",
+    "TransportLeg",
+    "IntracityStrategy",
+    "TransportRecommendation",
+    "ValidatorIssue",
+    "ItinerarySegment",
+    "ItineraryDay",
+    "Itinerary",
+    "HardConstraints",
+    "Preference",
+    "AdjustmentRequest",
+    "ConversationTurn",
+    "DiscoveryState",
+    "PlanningSession",
 )
+
+
+def root_models() -> tuple[SchemaModel, ...]:
+    schemas = import_module("app.models.schemas")
+    return tuple(getattr(schemas, name) for name in ROOT_MODEL_NAMES)
 
 
 def build_schema_document() -> dict[str, object]:
     defs: dict[str, object] = {}
-    for model in ROOT_MODELS:
+    for model in root_models():
         schema = model.model_json_schema(ref_template="#/$defs/{model}")
         nested_defs = schema.pop("$defs", {})
         defs.update(nested_defs)
