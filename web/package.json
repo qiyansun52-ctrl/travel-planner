@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "sh -c 'cd ../api && uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000 & api_pid=$!; trap \"kill $api_pid\" EXIT INT TERM; next dev'",
+    "dev:web": "next dev",
+    "dev:api": "cd ../api && uv run uvicorn main:app --reload --host 127.0.0.1 --port 8000",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",

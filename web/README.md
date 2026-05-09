@@ -1,8 +1,8 @@
-# Travel Planner — Web (UI 层)
+# Travel Planner Web
 
-Next.js 应用,只负责 UI 和路由壳。所有规划逻辑在 `../api`(Python LangGraph)。
+Next.js UI and route shell for the single-city planner. Planning logic, sessions, persistence, metrics, providers, and LangGraph orchestration live in `../api`.
 
-## Run
+## Development
 
 ```bash
 cd web
@@ -10,7 +10,14 @@ npm install
 npm run dev
 ```
 
-默认打开 `http://localhost:3000`,后端依赖 `../api` 跑在 `http://localhost:8000`。
+The dev script starts FastAPI on `http://127.0.0.1:8000` and Next.js on `http://localhost:3000`. The browser client defaults `NEXT_PUBLIC_API_URL` to `http://localhost:8000`; set it explicitly if your API runs elsewhere.
+
+Run either side by itself:
+
+```bash
+npm run dev:web
+npm run dev:api
+```
 
 ## Test
 
@@ -28,4 +35,4 @@ npm run test:e2e
 / -> /discovery/[sessionId] -> /preferences/[sessionId] -> /trips/[sessionId]
 ```
 
-旧的 `/discover/[destination]`、`/plan/[id]`、Next.js server agents 和 Next.js API routes 是迁移期 legacy surface,最终会被 Python 后端取代。
+There are no Next.js API routes or server-side planning agents after Plan 7; the UI talks to the Python API directly.
