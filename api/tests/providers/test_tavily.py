@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
 from app.providers.search.tavily import TavilySearchProvider, build_search_queries
 from app.providers.types import ProviderError, SearchRequest
-from app.services.tavily import search_tavily_three_sections
+from app.services.tavily import search_tavily, search_tavily_three_sections
 
 
 def test_build_search_queries_returns_three_chinese_queries() -> None:
@@ -78,6 +79,20 @@ async def test_tavily_search_maps_non_success_to_network_failure(
     with pytest.raises(ProviderError) as ei:
         await provider.search(SearchRequest(query="x"))
     assert ei.value.code == "network_failure"
+
+
+async def test_tavily_search_maps_timeout_to_timeout(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_exception(
+        httpx.TimeoutException("timeout"),
+        method="POST",
+        url="https://api.tavily.com/search",
+    )
+    provider = TavilySearchProvider(api_key="key")
+    with pytest.raises(ProviderError) as ei:
+        await provider.search(SearchRequest(query="x"))
+    assert ei.value.code == "timeout"
 
 
 async def test_tavily_search_maps_malformed_json_to_invalid_payload(
@@ -182,6 +197,30 @@ async def test_legacy_three_section_shim_returns_search_items(
     assert experience[0].title == "A"
     assert transport[0].title == "B"
     assert food[0].title == "C"
+
+
+async def test_legacy_single_search_shim_returns_search_items(
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.tavily.com/search",
+        json={
+            "results": [
+                {
+                    "title": "A",
+                    "url": "https://example.com/A",
+                    "content": "snippet",
+                }
+            ]
+        },
+    )
+
+    results = await search_tavily("上海 景点", "key")
+    assert results[0].title == "A"
+    assert results[0].link == "https://example.com/A"
+    assert results[0].snippet == "snippet"
+    assert results[0].image_url == ""
 
 
 async def test_legacy_three_section_shim_swallows_failed_section(

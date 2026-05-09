@@ -54,6 +54,10 @@ class TavilySearchProvider:
                         "include_answer": False,
                     },
                 )
+        except httpx.TimeoutException as exc:
+            raise self._provider_error(
+                "timeout", "Tavily search timed out", exc
+            ) from exc
         except httpx.HTTPError as exc:
             raise self._provider_error(
                 "network_failure", "Tavily search network failure", exc
