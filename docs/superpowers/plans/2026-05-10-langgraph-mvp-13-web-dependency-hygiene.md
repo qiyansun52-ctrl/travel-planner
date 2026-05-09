@@ -171,7 +171,7 @@ git commit -m "fix(web): align default API origin"
 - Modify: `scripts/check_launch_readiness.py`
 - Modify: `docs/superpowers/plans/2026-05-10-langgraph-mvp-13-web-dependency-hygiene.md`
 
-- [ ] **Step 1: Import JSON support**
+- [x] **Step 1: Import JSON support**
 
 Add this import near the top of `scripts/check_launch_readiness.py`:
 
@@ -179,7 +179,7 @@ Add this import near the top of `scripts/check_launch_readiness.py`:
 import json
 ```
 
-- [ ] **Step 2: Add forbidden web package set**
+- [x] **Step 2: Add forbidden web package set**
 
 Add this constant below `WEB_ENV_FORBIDDEN`:
 
@@ -195,7 +195,7 @@ WEB_PACKAGE_FORBIDDEN = {
 }
 ```
 
-- [ ] **Step 3: Add package checker**
+- [x] **Step 3: Add package checker**
 
 Add this function after `check_env_examples`:
 
@@ -215,7 +215,7 @@ def check_web_package(failures: list[str]) -> None:
 
 Call `check_web_package(failures)` from `main()` between env and docs checks.
 
-- [ ] **Step 4: Add docs/config assertions**
+- [x] **Step 4: Add docs/config assertions**
 
 Inside `check_docs`, add:
 
@@ -239,7 +239,7 @@ Inside `check_docs`, add:
     )
 ```
 
-- [ ] **Step 5: Run launch checker**
+- [x] **Step 5: Run launch checker**
 
 Run:
 
@@ -249,7 +249,7 @@ make launch-check
 
 Expected: `Launch readiness checks passed.`
 
-- [ ] **Step 6: Run full regression**
+- [x] **Step 6: Run full regression**
 
 Run:
 
@@ -259,7 +259,7 @@ make regression
 
 Expected: launch checker, generated type drift, frontend lint/unit/build/e2e, backend pytest/ruff, and API smoke all pass.
 
-- [ ] **Step 7: Verify repository state**
+- [x] **Step 7: Verify repository state**
 
 Run:
 
@@ -270,7 +270,7 @@ git diff --check origin/feature/mvp-web-app...HEAD
 
 Expected: clean working tree except the Plan13 acceptance checklist before the final commit; no whitespace errors.
 
-- [ ] **Step 8: Commit checker and acceptance**
+- [x] **Step 8: Commit checker and acceptance**
 
 ```bash
 git add scripts/check_launch_readiness.py docs/superpowers/plans/2026-05-10-langgraph-mvp-13-web-dependency-hygiene.md

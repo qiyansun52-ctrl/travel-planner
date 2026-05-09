@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -30,6 +31,16 @@ WEB_ENV_FORBIDDEN = {
     "AMAP_API_KEY",
     "MAPBOX_ACCESS_TOKEN",
     "WEATHER_PROVIDER_API_KEY",
+}
+
+WEB_PACKAGE_FORBIDDEN = {
+    "@anthropic-ai/sdk",
+    "@google/generative-ai",
+    "zod",
+    "jest",
+    "@types/jest",
+    "jest-environment-jsdom",
+    "ts-jest",
 }
 
 
@@ -97,6 +108,19 @@ def check_env_examples(failures: list[str]) -> None:
         failures.append(
             "web/.env.example contains backend-only secrets: "
             + ", ".join(forbidden_web)
+        )
+
+
+def check_web_package(failures: list[str]) -> None:
+    package_json = json.loads((ROOT / "web/package.json").read_text())
+    package_names = set(package_json.get("dependencies", {})) | set(
+        package_json.get("devDependencies", {})
+    )
+    forbidden = sorted(WEB_PACKAGE_FORBIDDEN & package_names)
+    if forbidden:
+        failures.append(
+            "web/package.json contains stale backend/test dependencies: "
+            + ", ".join(forbidden)
         )
 
 
@@ -177,6 +201,23 @@ def check_docs(failures: list[str]) -> None:
         "NEXT_PUBLIC_API_URL=http://127.0.0.1:8000",
         failures,
         reason="web development env",
+    )
+    require_path_not_exists(
+        ROOT / "web/jest.config.ts",
+        failures,
+        reason="Vitest is the canonical web unit test runner",
+    )
+    require_contains(
+        ROOT / "web/src/lib/apiClient.ts",
+        'const DEFAULT_API_URL = "http://127.0.0.1:8000"',
+        failures,
+        reason="web API default origin",
+    )
+    require_contains(
+        ROOT / "web/next.config.ts",
+        "http://127.0.0.1:8000",
+        failures,
+        reason="Next rewrite default origin",
     )
     for key in sorted(WEB_ENV_FORBIDDEN):
         require_not_contains(
@@ -265,6 +306,7 @@ def check_docs(failures: list[str]) -> None:
 def main() -> int:
     failures: list[str] = []
     check_env_examples(failures)
+    check_web_package(failures)
     check_docs(failures)
 
     if failures:
