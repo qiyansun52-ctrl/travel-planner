@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.models.schemas import Coordinate
 from app.providers.map.coord import convert_gcj02_to_wgs84, is_outside_china
 
@@ -19,3 +21,5 @@ def test_converts_china_gcj02_coordinates_into_nearby_wgs84_coordinates() -> Non
     assert abs(wgs84.lng - gcj02.lng) > 0.001
     assert 31 < wgs84.lat < 32
     assert 121 < wgs84.lng < 122
+    assert wgs84.lat == pytest.approx(31.23234226242273)
+    assert wgs84.lng == pytest.approx(121.46917694072306)
