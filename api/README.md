@@ -52,11 +52,6 @@ Server listens on `http://localhost:8000`. Health check: `http://localhost:8000/
 ## Current Endpoints
 
 - `GET /health`
-- `GET /api/discover?destination=...`
-- `POST /api/plan/generate`
-
-## Target Canonical Endpoints
-
 - `POST /api/sessions`
 - `GET /api/sessions/{session_id}`
 - `POST /api/sessions/{session_id}/discovery`
@@ -66,6 +61,28 @@ Server listens on `http://localhost:8000`. Health check: `http://localhost:8000/
 - `GET /api/sessions/{session_id}/itinerary/stream`
 - `PATCH /api/sessions/{session_id}/stay-override`
 - `POST /api/sessions/{session_id}/adjustments`
+
+Legacy scaffold endpoints `/api/discover` and `/api/plan/generate` have been removed from the Python app. The remaining Next.js endpoints are compatibility surfaces until the web cutover plan points the UI directly at these canonical FastAPI routes.
+
+## Smoke Test
+
+Start the API in fixture mode:
+
+```bash
+E2E_FIXTURE_MODE=1 uv run uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Run the canonical curl flow:
+
+```bash
+BASE_URL=http://127.0.0.1:8000 bash scripts/smoke_curl.sh
+```
+
+Expected output:
+
+```text
+Smoke flow passed for session_...
+```
 
 ## Tests
 

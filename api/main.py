@@ -5,10 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routes.adjustments import router as adjustments_router
-from app.routes.discover import router as discover_router
 from app.routes.discovery import router as discovery_router
 from app.routes.itinerary import router as itinerary_router
-from app.routes.plan import router as plan_router
 from app.routes.preferences import router as preferences_router
 from app.routes.sessions import router as sessions_router
 
@@ -24,8 +22,6 @@ app.add_middleware(
     allow_credentials=False,
 )
 
-app.include_router(discover_router)
-app.include_router(plan_router)
 app.include_router(sessions_router)
 app.include_router(discovery_router)
 app.include_router(preferences_router)
