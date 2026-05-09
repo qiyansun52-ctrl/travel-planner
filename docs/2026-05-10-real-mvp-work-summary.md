@@ -11,11 +11,11 @@
 - 真实 API smoke 跑通：sessions -> discovery -> selection -> preferences -> itinerary -> adjustments。
 - 真实浏览器流程跑通：首页 -> discovery -> preferences -> trips -> adjustment。
 - 离线发布门禁跑通：`make regression` 全绿。
-- 当前主流程主要真实调用 Gemini；Tavily key 已验证可用，但 Tavily 搜索结果还没有接入 discovery 主图流程。
+- 当前主流程会先用 Tavily 搜索 grounding，再把搜索摘要交给 Gemini discovery agent 生成结构化结果。
 
 当前分支：`feature/mvp-web-app`
 
-当前状态：代码有未提交变更，主要是为了真实 provider 模式稳定性做的修复和测试补强。
+当前状态：真实 provider 稳定性修复已提交；Plan14 已把 Tavily grounding 接入 discovery 主流程并通过真实 smoke 与完整 regression。
 
 ## 今天你完成了什么
 
@@ -64,9 +64,7 @@ tavily_ok count=8
 first_url_set=True
 ```
 
-说明 Tavily key 和 adapter 可用。
-
-但当前主规划图还没有把 Tavily 搜索结果接进 discovery prompt，这是下一步重要产品化任务。
+说明 Tavily key 和 adapter 可用。Plan14 进一步把 Tavily 搜索结果接进 discovery prompt，并把 Tavily 来源合并进 `source_notes`。
 
 ### 4. 修掉真实模式暴露的问题
 
@@ -135,15 +133,14 @@ make regression
 - Adjustment workflow：跑通真实浏览器里的 adjustment 提交，页面显示已更新。
 - Fixture agents/workflow：完整 regression 和 e2e 仍然通过。
 
-### 部分跑通
+### 进一步跑通
 
-- Tavily search provider：adapter 已真实跑通，key 可用。
-- Tavily 主流程集成：还没完成。当前 discovery 主流程仍主要依赖 Gemini 自身生成，而不是先用 Tavily 搜索再喂给 Gemini。
+- Tavily search provider：adapter 已真实跑通，key 可用；Plan14 已把 Tavily grounding 接入 discovery 主流程。
 
 ### 还没有产品化
 
 - AMap / Mapbox：env key 还未配置，主流程没有真实地图 provider 验收。
-- 图片：真实模型可能生成 `example.com` 图片 URL，后续需要真实图片/provider 或干脆隐藏无效图片。
+- 图片：`example.com` 占位图片已在 discovery normalization 中过滤；后续还需要真实图片/provider 或更完整的图片策略。
 - 生产环境：还没有部署、监控、限流、成本保护、用户数据隔离。
 
 ## 当前已有功能
@@ -216,9 +213,9 @@ uv run python scripts/smoke_llm.py
 
 然后跑真实 API smoke。
 
-### 然后提交当前真实模式修复
+### 当前真实模式修复
 
-建议 commit 范围：
+以下范围已经提交：
 
 - config/env loading
 - LLM structured schema hardening
@@ -227,7 +224,7 @@ uv run python scripts/smoke_llm.py
 - web discovery StrictMode dedupe
 - tests for all of the above
 
-建议 commit message：
+commit message：
 
 ```text
 fix: harden real provider MVP flow
@@ -235,7 +232,7 @@ fix: harden real provider MVP flow
 
 ### 下一阶段 Plan 建议
 
-建议下一个 plan 做：
+Plan14 已完成：
 
 ```text
 Plan14: Tavily-Backed Discovery Grounding
@@ -250,7 +247,7 @@ Plan14: Tavily-Backed Discovery Grounding
 - 为 Tavily 失败设计 graceful fallback。
 - 加 fixture 和真实 smoke 验收。
 
-之后再做：
+之后建议继续做：
 
 - Plan15: AMap / Mapbox real map enrichment。
 - Plan16: production readiness，包括部署、限流、日志、成本控制、错误监控。
@@ -259,7 +256,7 @@ Plan14: Tavily-Backed Discovery Grounding
 ## 当前风险
 
 - 密钥已在聊天里暴露过，必须轮换。
-- Tavily 还没有进入主 discovery graph，所以真实搜索价值还没体现在产品结果里。
+- Tavily 已进入主 discovery graph，但搜索摘要到 itinerary 质量仍需要真实多城市样本持续观察。
 - 真实 Gemini 输出仍需要长期观察，虽然今天已经加了 schema、净化和重试。
 - 当前 session persistence 是本地文件，不适合多人生产使用。
 - 没有认证、限流、额度保护。
@@ -269,7 +266,7 @@ Plan14: Tavily-Backed Discovery Grounding
 
 - 没有 dev server 残留。
 - 本地 `.env` 不会被提交。
-- 代码有未提交变更。
-- 完整 regression 已通过。
-- 真实 Gemini/Tavily 验收已通过。
+- 真实 provider 稳定性修复已提交。
+- 完整 regression 已通过，包括 Plan14 后的最新一轮：API `343 passed`、web unit `12 passed`、Playwright `4 passed`。
+- 真实 Gemini/Tavily 验收已通过；Plan14 后的真实 API smoke 也已通过，并确认 discovery `source_notes` 包含 Tavily URL。
 - 项目现在可以被称为“真实可用 MVP”，但还不是“可长期给真实用户使用的生产产品”。

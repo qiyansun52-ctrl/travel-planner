@@ -19,8 +19,48 @@ from app.graph.nodes.stay import run_stay_agent, run_stay_node
 from app.graph.nodes.transport import run_transport_agent, run_transport_node
 from app.graph.nodes.validator import run_validator_node
 from app.graph.state import PlanState, append_progress, graph_input_from_state, validate_graph_state
-from app.models.schemas import BudgetBand, DiscoveryOutput
+from app.models.schemas import BudgetBand, DiscoveryOutput, SourceNote
+from app.providers.types import ProviderError, SearchRequest, SearchResult
 from tests.graph import fixtures
+
+
+class FakeSearchProvider:
+    name = "tavily"
+
+    def __init__(self, results_by_query: dict[str, list[SearchResult]]) -> None:
+        self.results_by_query = results_by_query
+        self.requests: list[SearchRequest] = []
+
+    async def health(self):
+        raise AssertionError("discovery grounding should call search directly")
+
+    async def search(self, request: SearchRequest) -> list[SearchResult]:
+        self.requests.append(request)
+        return self.results_by_query.get(request.query, [])
+
+
+class FailingSearchProvider:
+    name = "tavily"
+
+    async def health(self):
+        raise AssertionError("discovery grounding should call search directly")
+
+    async def search(self, request: SearchRequest) -> list[SearchResult]:
+        raise ProviderError(
+            provider="tavily",
+            kind="search",
+            code="network_failure",
+            message=f"failed {request.query}",
+        )
+
+
+def search_result(title: str, url: str, snippet: str) -> SearchResult:
+    return SearchResult(
+        title=title,
+        url=url,
+        snippet=snippet,
+        source_note=SourceNote(provider="tavily", url=url, note="Tavily search result"),
+    )
 
 
 def test_compute_enrichment_status_classifies_enrichment_depth() -> None:
@@ -125,7 +165,115 @@ async def test_run_discovery_agent_live_path_calls_llm_and_normalizes(monkeypatc
     assert "travel discovery agent" in recorded["system"]
     assert "上海" in recorded["user"]
     assert output.cards[0].cost_signal == "free"
-    assert output.cards[0].enrichment_status == "complete"
+    assert output.cards[0].image_url is None
+    assert output.cards[0].enrichment_status == "partial"
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_adds_tavily_grounding_to_prompt_and_sources(
+    monkeypatch,
+) -> None:
+    recorded = {}
+    output_from_llm = fixtures.discovery_output().model_copy(
+        update={
+            "source_notes": [
+                SourceNote(provider="gemini", url=None, note="Generated from prompt")
+            ]
+        }
+    )
+    provider = FakeSearchProvider(
+        {
+            "上海 必去景点 旅游体验 攻略 2025": [
+                search_result(
+                    "Shanghai waterfront guide",
+                    "https://example.com/bund-guide",
+                    "The Bund is a classic first-time visitor anchor.",
+                )
+            ],
+            "上海 交通攻略 怎么去 市内出行 交通方式": [
+                search_result(
+                    "Shanghai metro guide",
+                    "https://example.com/metro-guide",
+                    "Metro is usually the easiest way to cross the city.",
+                )
+            ],
+            "上海 美食推荐 必吃 餐厅 小吃 2025": [
+                search_result(
+                    "Shanghai food guide",
+                    "https://example.com/food-guide",
+                    "Xiaolongbao and shengjianbao are common local highlights.",
+                )
+            ],
+        }
+    )
+
+    async def fake_generate_structured(**kwargs):
+        recorded.update(kwargs)
+        return output_from_llm
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        search_provider=provider,
+    )
+
+    assert len(provider.requests) == 3
+    assert "Search grounding from Tavily" in recorded["user"]
+    assert "Shanghai waterfront guide" in recorded["user"]
+    assert "Shanghai metro guide" in recorded["user"]
+    assert "Shanghai food guide" in recorded["user"]
+    assert any(note.provider == "tavily" for note in result.source_notes)
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_continues_when_tavily_grounding_fails(
+    monkeypatch,
+) -> None:
+    recorded = {}
+
+    async def fake_generate_structured(**kwargs):
+        recorded.update(kwargs)
+        return fixtures.discovery_output()
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        search_provider=FailingSearchProvider(),
+    )
+
+    assert result.cards
+    assert "Search grounding unavailable" in recorded["user"]
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_removes_placeholder_image_urls(monkeypatch) -> None:
+    card = fixtures.discovery_card().model_copy(
+        update={"image_url": "https://example.com/not-a-real-image.jpg"}
+    )
+
+    async def fake_generate_structured(**_: object):
+        return fixtures.discovery_output().model_copy(update={"cards": [card]})
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(fixtures.session(), search_provider=None)
+
+    assert result.cards[0].image_url is None
+    assert result.cards[0].enrichment_status == "partial"
 
 
 @pytest.mark.asyncio

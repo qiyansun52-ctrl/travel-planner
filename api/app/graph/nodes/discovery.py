@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
+from collections.abc import Iterable
 from typing import Literal
 
 from app.domain.budget import classify_attraction_cost_signal
@@ -19,12 +21,15 @@ from app.models.schemas import (
     DiscoveryState,
     FoodSummary,
     PlanningSession,
+    SourceNote,
 )
 from app.providers.fixtures import (
     fixture_place,
     fixture_provider_for_country,
     fixture_source_note,
 )
+from app.providers.search.tavily import TavilySearchProvider, build_search_queries
+from app.providers.types import ProviderError, SearchProvider, SearchRequest, SearchResult
 
 
 def compute_enrichment_status(card: DiscoveryCard) -> Literal["complete", "partial", "minimal"]:
@@ -40,21 +45,30 @@ async def run_discovery_agent(
     *,
     fixture_mode: bool = False,
     llm_provider: LLMProvider | None = None,
+    search_provider: SearchProvider | None = None,
     cost_logger: LLMCostLogger | None = None,
 ) -> DiscoveryOutput:
     if fixture_mode or not _has_llm_api_key():
         return _build_fixture_discovery_output(session)
 
+    search_results = await _collect_search_grounding(session, search_provider)
+    search_context = _format_search_grounding(search_results)
     output = await generate_structured(
         system="You are a travel discovery agent. Return only valid JSON matching the schema.",
-        user=_build_discovery_prompt(session),
+        user=_build_discovery_prompt(session, search_context=search_context),
         schema=DiscoveryOutput,
         label="discovery_agent",
         provider=llm_provider,
         cost_logger=cost_logger,
     )
     return output.model_copy(
-        update={"cards": [_normalize_discovery_card(card, session) for card in output.cards]}
+        update={
+            "cards": [_normalize_discovery_card(card, session) for card in output.cards],
+            "source_notes": _merge_source_notes(
+                _source_notes_from_search_results(search_results),
+                output.source_notes,
+            ),
+        }
     )
 
 
@@ -138,7 +152,11 @@ def _has_llm_api_key() -> bool:
     return bool(os.environ.get("LLM_PROVIDER_API_KEY") or os.environ.get("GEMINI_API_KEY"))
 
 
-def _build_discovery_prompt(session: PlanningSession) -> str:
+def _build_discovery_prompt(
+    session: PlanningSession,
+    *,
+    search_context: str | None = None,
+) -> str:
     constraints = session.hard_constraints
     return "\n".join(
         [
@@ -151,20 +169,115 @@ def _build_discovery_prompt(session: PlanningSession) -> str:
                 "route, final itinerary, or specific restaurant."
             ),
             "Cards must include attractions and experiences; food and area summaries are planning context.",
+            "Use grounded search notes when available, but still return only the DiscoveryOutput JSON shape.",
+            "Set image_url to null unless a source gives a direct, real image URL. Never invent example.com image URLs.",
+            search_context
+            or "Search grounding unavailable; use general travel knowledge and keep source_notes honest.",
         ]
     )
 
 
+async def _collect_search_grounding(
+    session: PlanningSession,
+    search_provider: SearchProvider | None,
+) -> list[SearchResult]:
+    provider = search_provider or _default_search_provider()
+    if provider is None:
+        return []
+
+    destination = session.hard_constraints.destination_city
+    country_code = session.hard_constraints.destination_country_code
+    queries = build_search_queries(destination)
+    batches = await asyncio.gather(
+        *[
+            _safe_search(
+                provider,
+                SearchRequest(query=query, country_code=country_code, limit=4),
+            )
+            for query in queries
+        ],
+        return_exceptions=False,
+    )
+    return [result for batch in batches for result in batch]
+
+
+async def _safe_search(
+    provider: SearchProvider,
+    request: SearchRequest,
+) -> list[SearchResult]:
+    try:
+        return await provider.search(request)
+    except ProviderError:
+        return []
+    except Exception:
+        return []
+
+
+def _default_search_provider() -> SearchProvider | None:
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
+        return None
+    return TavilySearchProvider(api_key=api_key)
+
+
+def _format_search_grounding(results: list[SearchResult]) -> str:
+    if not results:
+        return "Search grounding unavailable; use general travel knowledge and keep source_notes honest."
+
+    lines = ["Search grounding from Tavily:"]
+    for index, result in enumerate(results[:12], start=1):
+        url = result.url or "no-url"
+        snippet = " ".join(result.snippet.split())
+        lines.append(f"{index}. {result.title} ({url}) - {snippet[:280]}")
+    return "\n".join(lines)
+
+
+def _source_notes_from_search_results(results: list[SearchResult]) -> list[SourceNote]:
+    notes: list[SourceNote] = []
+    for result in results:
+        if result.source_note is not None:
+            notes.append(result.source_note)
+        elif result.url:
+            notes.append(SourceNote(provider="tavily", url=result.url, note=result.title))
+    return notes
+
+
+def _merge_source_notes(
+    grounded_notes: Iterable[SourceNote],
+    model_notes: Iterable[SourceNote],
+) -> list[SourceNote]:
+    merged: list[SourceNote] = []
+    seen: set[tuple[str, str | None, str]] = set()
+    for note in [*grounded_notes, *model_notes]:
+        key = (note.provider, note.url, note.note)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(note)
+    return merged
+
+
 def _normalize_discovery_card(card: DiscoveryCard, session: PlanningSession) -> DiscoveryCard:
-    return card.model_copy(
+    normalized = card.model_copy(
         update={
+            "image_url": _usable_image_url(card.image_url),
             "cost_signal": classify_attraction_cost_signal(
                 card.cost_estimate,
                 session.hard_constraints,
             ),
-            "enrichment_status": compute_enrichment_status(card),
         }
     )
+    return normalized.model_copy(
+        update={"enrichment_status": compute_enrichment_status(normalized)}
+    )
+
+
+def _usable_image_url(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if "example.com" in value.lower():
+        return None
+    return value
 
 
 def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput:
