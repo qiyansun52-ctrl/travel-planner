@@ -70,23 +70,13 @@ Legacy scaffold endpoints `/api/discover` and `/api/plan/generate` have been rem
 
 ## Smoke Test
 
-Start the API in fixture mode:
+From `api/`, run the fixture-backed smoke gate:
 
 ```bash
-E2E_FIXTURE_MODE=1 uv run uvicorn main:app --host 127.0.0.1 --port 8000
+bash scripts/run_fixture_smoke.sh
 ```
 
-Run the canonical curl flow:
-
-```bash
-BASE_URL=http://127.0.0.1:8000 bash scripts/smoke_curl.sh
-```
-
-Expected output:
-
-```text
-Smoke flow passed for session_...
-```
+The runner starts FastAPI on `127.0.0.1:${SMOKE_PORT:-8767}`, uses temporary session and metrics directories, runs `scripts/smoke_curl.sh`, and cleans up the server process.
 
 Set `PYTHON_BIN=/path/to/python` when your shell does not expose `python3`.
 

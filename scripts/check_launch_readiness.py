@@ -101,7 +101,7 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "api/.env.example", failures, reason="root setup")
     require_contains(root_readme, "web/.env.example", failures, reason="root setup")
     require_contains(root_readme, "make regression", failures, reason="root verification")
-    require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
+    require_contains(root_readme, "make smoke", failures, reason="root API smoke")
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
     for key in sorted(API_ENV_REQUIRED):
@@ -116,6 +116,12 @@ def check_docs(failures: list[str]) -> None:
         "remaining Next.js endpoints are compatibility surfaces",
         failures,
         reason="Plan 7 cutover is complete",
+    )
+    require_contains(
+        api_readme,
+        "bash scripts/run_fixture_smoke.sh",
+        failures,
+        reason="API smoke runner",
     )
 
     require_contains(
@@ -142,9 +148,9 @@ def check_docs(failures: list[str]) -> None:
     require_contains(launch_checklist, "make regression", failures, reason="launch gate")
     require_contains(
         launch_checklist,
-        "api/scripts/smoke_curl.sh",
+        "make smoke",
         failures,
-        reason="root API smoke",
+        reason="launch smoke gate",
     )
     require_not_contains(
         launch_checklist,
@@ -166,6 +172,13 @@ def check_docs(failures: list[str]) -> None:
     )
 
     require_contains(makefile, "launch-check:", failures, reason="launch gate target")
+    require_contains(makefile, "smoke:", failures, reason="API smoke target")
+    require_contains(
+        makefile,
+        "cd api && bash scripts/run_fixture_smoke.sh",
+        failures,
+        reason="API smoke target",
+    )
     require_contains(
         makefile,
         "git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts",

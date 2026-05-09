@@ -146,7 +146,7 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "api/.env.example", failures, reason="root setup")
     require_contains(root_readme, "web/.env.example", failures, reason="root setup")
     require_contains(root_readme, "make regression", failures, reason="root verification")
-    require_contains(root_readme, "api/scripts/smoke_curl.sh", failures, reason="API smoke")
+    require_contains(root_readme, "make smoke", failures, reason="root API smoke")
 
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
     for key in sorted(API_ENV_REQUIRED):
@@ -161,6 +161,12 @@ def check_docs(failures: list[str]) -> None:
         "remaining Next.js endpoints are compatibility surfaces",
         failures,
         reason="Plan 7 cutover is complete",
+    )
+    require_contains(
+        api_readme,
+        "bash scripts/run_fixture_smoke.sh",
+        failures,
+        reason="API smoke runner",
     )
 
     require_contains(
@@ -187,9 +193,9 @@ def check_docs(failures: list[str]) -> None:
     require_contains(launch_checklist, "make regression", failures, reason="launch gate")
     require_contains(
         launch_checklist,
-        "api/scripts/smoke_curl.sh",
+        "make smoke",
         failures,
-        reason="root API smoke",
+        reason="launch smoke gate",
     )
     require_not_contains(
         launch_checklist,
@@ -211,6 +217,13 @@ def check_docs(failures: list[str]) -> None:
     )
 
     require_contains(makefile, "launch-check:", failures, reason="launch gate target")
+    require_contains(makefile, "smoke:", failures, reason="API smoke target")
+    require_contains(
+        makefile,
+        "cd api && bash scripts/run_fixture_smoke.sh",
+        failures,
+        reason="API smoke target",
+    )
     require_contains(
         makefile,
         "git diff --exit-code api/dist/schema.json web/src/lib/generated/types.ts",
@@ -371,27 +384,21 @@ From the repo root:
 
 ```bash
 make launch-check
+make smoke
 make regression
 ```
 
-`make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, and backend ruff.
+`make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, backend ruff, and fixture-backed API smoke.
 
 ## API Smoke
 
-In one terminal:
+From the repo root:
 
 ```bash
-cd api
-E2E_FIXTURE_MODE=1 GEMINI_API_KEY=test-gemini TAVILY_API_KEY=test-tavily uv run uvicorn main:app --host 127.0.0.1 --port 8000
+make smoke
 ```
 
-In another terminal, from the repository root:
-
-```bash
-BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh
-```
-
-Expected output starts with `Smoke flow passed for session_`.
+`make smoke` starts FastAPI in fixture mode on port `8767`, runs `api/scripts/smoke_curl.sh`, and cleans up the server process.
 
 ## Planning Docs
 
@@ -461,7 +468,7 @@ make launch-check
 make regression
 ```
 
-- API smoke section includes `BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh`.
+- API smoke section includes `make smoke`.
 - Offline fixture note explicitly names `E2E_FIXTURE_MODE=1`.
 
 - [ ] **Step 7: Verify launch checker passes**

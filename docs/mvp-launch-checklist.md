@@ -47,22 +47,16 @@ Expected passing state starts from the repository root:
 
 ```bash
 make launch-check
+make smoke
 make regression
 ```
 
 ## API Smoke
 
-Start the API in fixture mode:
+From the repository root:
 
 ```bash
-cd api
-E2E_FIXTURE_MODE=1 GEMINI_API_KEY=test-gemini TAVILY_API_KEY=test-tavily uv run uvicorn main:app --host 127.0.0.1 --port 8000
-```
-
-Run the canonical curl flow from the repository root:
-
-```bash
-BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh
+make smoke
 ```
 
 Expected output starts with `Smoke flow passed for session_`.

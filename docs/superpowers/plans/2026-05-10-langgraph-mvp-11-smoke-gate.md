@@ -35,7 +35,7 @@
 **Files:**
 - Modify: `docs/superpowers/plans/2026-05-10-langgraph-mvp-11-smoke-gate.md`
 
-- [ ] **Step 1: Commit this implementation plan before code changes**
+- [x] **Step 1: Commit this implementation plan before code changes**
 
 ```bash
 git add docs/superpowers/plans/2026-05-10-langgraph-mvp-11-smoke-gate.md
@@ -51,7 +51,7 @@ Expected: a docs-only commit containing this plan.
 **Files:**
 - Create: `api/scripts/run_fixture_smoke.sh`
 
-- [ ] **Step 1: Create the smoke runner**
+- [x] **Step 1: Create the smoke runner**
 
 Create `api/scripts/run_fixture_smoke.sh`:
 
@@ -81,6 +81,11 @@ LOG_FILE="$TMP_ROOT/uvicorn.log"
 
 mkdir -p "$SESSION_DATA_DIR" "$METRICS_DATA_DIR"
 
+if curl -fsS "$BASE_URL/health" >/dev/null 2>&1; then
+  echo "Smoke target already responds at $BASE_URL; choose SMOKE_PORT or stop the existing API." >&2
+  exit 1
+fi
+
 api_pid=""
 cleanup() {
   if [[ -n "$api_pid" ]]; then
@@ -104,11 +109,11 @@ api_pid=$!
 
 ready=0
 for _ in $(seq 1 60); do
-  if curl -fsS "$BASE_URL/health" >/dev/null 2>&1; then
-    ready=1
+  if ! kill -0 "$api_pid" 2>/dev/null; then
     break
   fi
-  if ! kill -0 "$api_pid" 2>/dev/null; then
+  if curl -fsS "$BASE_URL/health" >/dev/null 2>&1; then
+    ready=1
     break
   fi
   sleep 0.5
@@ -123,7 +128,7 @@ fi
 BASE_URL="$BASE_URL" PYTHON_BIN="$PYTHON_BIN" bash scripts/smoke_curl.sh
 ```
 
-- [ ] **Step 2: Run the new runner**
+- [x] **Step 2: Run the new runner**
 
 Run:
 
@@ -134,7 +139,7 @@ bash scripts/run_fixture_smoke.sh
 
 Expected: output starts with `Smoke flow passed for session_`.
 
-- [ ] **Step 3: Verify temporary files are not written into `api/.data` by default**
+- [x] **Step 3: Verify temporary files are not written into `api/.data` by default**
 
 Run:
 
@@ -156,7 +161,7 @@ Expected: no output.
 - Modify: `docs/mvp-launch-checklist.md`
 - Modify: `docs/superpowers/plans/2026-05-10-langgraph-mvp-10-launch-readiness.md`
 
-- [ ] **Step 1: Add Makefile target**
+- [x] **Step 1: Add Makefile target**
 
 Update `Makefile`:
 
@@ -188,7 +193,7 @@ regression:
 	cd web && npm run test:e2e
 ```
 
-- [ ] **Step 2: Strengthen launch readiness checker**
+- [x] **Step 2: Strengthen launch readiness checker**
 
 In `scripts/check_launch_readiness.py`, add checks:
 
@@ -217,7 +222,7 @@ In `scripts/check_launch_readiness.py`, add checks:
 
 Place the `makefile` checks near the existing Makefile checks, and the doc checks near the existing README/checklist assertions.
 
-- [ ] **Step 3: Update root README**
+- [x] **Step 3: Update root README**
 
 Replace the two-terminal smoke section in `README.md` with:
 
@@ -233,7 +238,7 @@ make smoke
 `make smoke` starts FastAPI in fixture mode on port `8767`, runs `api/scripts/smoke_curl.sh`, and cleans up the server process.
 ````
 
-- [ ] **Step 4: Update API README**
+- [x] **Step 4: Update API README**
 
 Replace the smoke test section in `api/README.md` with:
 
@@ -249,7 +254,7 @@ bash scripts/run_fixture_smoke.sh
 The runner starts FastAPI on `127.0.0.1:${SMOKE_PORT:-8767}`, uses temporary session and metrics directories, runs `scripts/smoke_curl.sh`, and cleans up the server process.
 ````
 
-- [ ] **Step 5: Update launch checklist**
+- [x] **Step 5: Update launch checklist**
 
 In `docs/mvp-launch-checklist.md`, replace the manual two-terminal API smoke instructions with:
 
@@ -265,11 +270,11 @@ make smoke
 Expected output starts with `Smoke flow passed for session_`.
 ````
 
-- [ ] **Step 6: Update Plan10 checker examples**
+- [x] **Step 6: Update Plan10 checker examples**
 
 Update `docs/superpowers/plans/2026-05-10-langgraph-mvp-10-launch-readiness.md` so its checker and README examples mention `make smoke` and `bash scripts/run_fixture_smoke.sh` instead of only direct `smoke_curl.sh` commands.
 
-- [ ] **Step 7: Verify launch checker**
+- [x] **Step 7: Verify launch checker**
 
 Run:
 
@@ -279,7 +284,7 @@ make launch-check
 
 Expected: `Launch readiness checks passed.`
 
-- [ ] **Step 8: Verify smoke gate through Makefile**
+- [x] **Step 8: Verify smoke gate through Makefile**
 
 Run:
 
@@ -289,7 +294,7 @@ make smoke
 
 Expected: output starts with `Smoke flow passed for session_`.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add Makefile api/scripts/run_fixture_smoke.sh scripts/check_launch_readiness.py README.md api/README.md docs/mvp-launch-checklist.md docs/superpowers/plans/2026-05-10-langgraph-mvp-10-launch-readiness.md

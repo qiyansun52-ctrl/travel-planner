@@ -47,27 +47,21 @@ From the repo root:
 
 ```bash
 make launch-check
+make smoke
 make regression
 ```
 
-`make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, and backend ruff.
+`make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, backend ruff, and fixture-backed API smoke.
 
 ## API Smoke
 
-In one terminal:
+From the repo root:
 
 ```bash
-cd api
-E2E_FIXTURE_MODE=1 GEMINI_API_KEY=test-gemini TAVILY_API_KEY=test-tavily uv run uvicorn main:app --host 127.0.0.1 --port 8000
+make smoke
 ```
 
-In another terminal, from the repository root:
-
-```bash
-BASE_URL=http://127.0.0.1:8000 bash api/scripts/smoke_curl.sh
-```
-
-Expected output starts with `Smoke flow passed for session_`.
+`make smoke` starts FastAPI in fixture mode on port `8767`, runs `api/scripts/smoke_curl.sh`, and cleans up the server process.
 
 ## Planning Docs
 
