@@ -35,7 +35,7 @@
 **Files:**
 - Create: `docs/superpowers/plans/2026-05-10-langgraph-mvp-13-web-dependency-hygiene.md`
 
-- [ ] **Step 1: Commit this plan before implementation**
+- [x] **Step 1: Commit this plan before implementation**
 
 ```bash
 git add docs/superpowers/plans/2026-05-10-langgraph-mvp-13-web-dependency-hygiene.md
@@ -53,7 +53,7 @@ Expected: a docs-only commit containing this plan.
 - Modify: `web/package-lock.json`
 - Delete: `web/jest.config.ts`
 
-- [ ] **Step 1: Confirm no source imports rely on removed packages**
+- [x] **Step 1: Confirm no source imports rely on removed packages**
 
 Run:
 
@@ -63,7 +63,7 @@ rg -n "from ['\"](zod|@anthropic-ai/sdk|@google/generative-ai)|require\\(['\"](z
 
 Expected: no output.
 
-- [ ] **Step 2: Remove stale npm packages**
+- [x] **Step 2: Remove stale npm packages**
 
 Run from `web/`:
 
@@ -73,11 +73,11 @@ npm uninstall @anthropic-ai/sdk @google/generative-ai zod jest @types/jest jest-
 
 Expected: `web/package.json` no longer contains those package names and `web/package-lock.json` is updated.
 
-- [ ] **Step 3: Delete obsolete Jest config**
+- [x] **Step 3: Delete obsolete Jest config**
 
 Delete `web/jest.config.ts`.
 
-- [ ] **Step 4: Verify remaining test stack is Vitest**
+- [x] **Step 4: Verify remaining test stack is Vitest**
 
 Run:
 
@@ -87,7 +87,7 @@ rg -n "jest|ts-jest|jest-environment-jsdom|@types/jest" web/package.json web/jes
 
 Expected: either no output or only `@testing-library/jest-dom/vitest`, which is still required by Vitest setup.
 
-- [ ] **Step 5: Run focused web checks**
+- [x] **Step 5: Run focused web checks**
 
 Run from `web/`:
 
@@ -98,7 +98,7 @@ npm run build
 
 Expected: Vitest and Next build pass after dependency removal.
 
-- [ ] **Step 6: Commit dependency cleanup**
+- [x] **Step 6: Commit dependency cleanup**
 
 ```bash
 git add web/package.json web/package-lock.json web/jest.config.ts
