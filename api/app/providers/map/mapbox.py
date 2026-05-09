@@ -107,7 +107,11 @@ class MapboxMapProvider:
             "route",
         )
         routes = _expect_list(body.get("routes"), "Mapbox routes")
-        first = routes[0] if routes else None
+        if not routes:
+            raise self._provider_error(
+                "unknown_failure", "Mapbox route returned no route"
+            )
+        first = routes[0]
         if (
             not isinstance(first, dict)
             or not isinstance(first.get("duration"), (int, float))

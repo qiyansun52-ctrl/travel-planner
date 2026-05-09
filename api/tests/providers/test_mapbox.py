@@ -397,6 +397,31 @@ async def test_route_maps_non_list_routes_to_invalid_payload(
     assert error.value.code == "invalid_normalized_payload"
 
 
+@pytest.mark.parametrize("payload", [{"routes": []}, {}])
+async def test_route_maps_no_routes_to_unknown_failure(
+    httpx_mock: HTTPXMock,
+    payload: dict[str, object],
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=re.compile(r"https://api\.mapbox\.com/directions/v5/mapbox/walking/.*"),
+        json=payload,
+    )
+    provider = MapboxMapProvider(access_token="token")
+
+    with pytest.raises(ProviderError) as error:
+        await provider.route(
+            RouteRequest(
+                from_=_place("mapbox:start", 31.2304, 121.4737),
+                to=_place("mapbox:end", 31.2310, 121.4800),
+                mode="walk",
+            )
+        )
+
+    assert error.value.code == "unknown_failure"
+    assert str(error.value) == "Mapbox route returned no route"
+
+
 async def test_route_maps_missing_coordinates_to_invalid_payload() -> None:
     provider = MapboxMapProvider(access_token="token")
     start = NormalizedPlace(
