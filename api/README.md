@@ -89,4 +89,4 @@ uv run ruff check app tests scripts
 
 From the repository root, `make regression` runs the full web + API gate.
 
-The active implementation plan is `../docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`.
+The canonical migration roadmap is `../docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`; post-roadmap hardening plans live beside it as Plan 10+.

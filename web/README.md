@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-The dev script starts FastAPI on `http://127.0.0.1:8000` and Next.js on `http://localhost:3000`. The browser client defaults `NEXT_PUBLIC_API_URL` to `http://localhost:8000`; set it explicitly if your API runs elsewhere.
+The dev script starts FastAPI on `http://127.0.0.1:8000` and Next.js on `http://localhost:3000`. Keep `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` unless your API runs elsewhere.
 
 Run either side by itself:
 
@@ -50,9 +50,10 @@ cd ..
 make regression
 ```
 
-The regression target runs generated-type drift checks, frontend lint/unit/build/e2e,
-and backend pytest/ruff. Playwright starts FastAPI with `E2E_FIXTURE_MODE=1`, dummy
-provider keys, temp session storage, and CORS configured for `127.0.0.1:3000`.
+The regression target runs launch docs/env checks, generated-type drift checks,
+frontend lint/unit/build/e2e, backend pytest/ruff, and fixture-backed API smoke.
+Playwright starts FastAPI with `E2E_FIXTURE_MODE=1`, dummy provider keys, temp
+session storage, and CORS configured for `127.0.0.1:3000`.
 
 ## Generated Types
 

@@ -65,4 +65,4 @@ make smoke
 
 ## Planning Docs
 
-The active migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`; Plan 10 is the launch-readiness pass after Plan 9.
+The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plan 1-9 are complete; Plan 10-12 are post-roadmap hardening passes for launch readiness, fixture smoke automation, and roadmap closure.

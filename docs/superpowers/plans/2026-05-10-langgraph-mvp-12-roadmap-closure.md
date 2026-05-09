@@ -33,7 +33,7 @@
 **Files:**
 - Create: `docs/superpowers/plans/2026-05-10-langgraph-mvp-12-roadmap-closure.md`
 
-- [ ] **Step 1: Commit this plan before implementation**
+- [x] **Step 1: Commit this plan before implementation**
 
 ```bash
 git add docs/superpowers/plans/2026-05-10-langgraph-mvp-12-roadmap-closure.md
@@ -52,7 +52,7 @@ Expected: a docs-only commit containing this plan.
 - Modify: `api/README.md`
 - Modify: `web/README.md`
 
-- [ ] **Step 1: Update roadmap status**
+- [x] **Step 1: Update roadmap status**
 
 In `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`, replace the opening status block with:
 
@@ -62,7 +62,7 @@ In `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`, replace the ope
 > Plan 1-9 are complete. Post-roadmap hardening continues in Plan 10 (launch readiness), Plan 11 (fixture API smoke gate), and Plan 12 (roadmap closure).
 ```
 
-- [ ] **Step 2: Update Plan 9 command wording**
+- [x] **Step 2: Update Plan 9 command wording**
 
 Replace the Plan 9 DoD command reference:
 
@@ -76,7 +76,7 @@ with:
 **DoD**:`make regression` 在本地 CI gate 跑完无错;Playwright critical paths 全绿;README 说明了 fixture 模式、API smoke 和离线回归。
 ```
 
-- [ ] **Step 3: Mark roadmap Definition of Done complete**
+- [x] **Step 3: Mark roadmap Definition of Done complete**
 
 Replace the final Definition of Done checklist with:
 
@@ -92,7 +92,7 @@ Replace the final Definition of Done checklist with:
 - [x] 顶层 README 更新"如何启动 / 如何跑回归"段落
 ```
 
-- [ ] **Step 4: Update root README planning note**
+- [x] **Step 4: Update root README planning note**
 
 Replace the root `## Planning Docs` paragraph with:
 
@@ -100,7 +100,7 @@ Replace the root `## Planning Docs` paragraph with:
 The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plan 1-9 are complete; Plan 10-12 are post-roadmap hardening passes for launch readiness, fixture smoke automation, and roadmap closure.
 ```
 
-- [ ] **Step 5: Update API README planning note**
+- [x] **Step 5: Update API README planning note**
 
 Replace the final API README planning sentence with:
 
@@ -108,7 +108,7 @@ Replace the final API README planning sentence with:
 The canonical migration roadmap is `../docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`; post-roadmap hardening plans live beside it as Plan 10+.
 ```
 
-- [ ] **Step 6: Update Web README regression wording**
+- [x] **Step 6: Update Web README regression wording**
 
 In `web/README.md`, replace:
 
@@ -139,7 +139,7 @@ with:
 The dev script starts FastAPI on `http://127.0.0.1:8000` and Next.js on `http://localhost:3000`. Keep `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` unless your API runs elsewhere.
 ```
 
-- [ ] **Step 7: Commit docs**
+- [x] **Step 7: Commit docs**
 
 ```bash
 git add docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md README.md api/README.md web/README.md docs/superpowers/plans/2026-05-10-langgraph-mvp-12-roadmap-closure.md
