@@ -9,6 +9,7 @@ from typing import Literal, Mapping, NotRequired, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+MetricFilePath = str | Path | None
 MetricEventName = Literal[
     "step1_submitted",
     "discovery_arrived",
@@ -59,17 +60,17 @@ def default_metric_file_path(env: Mapping[str, str] | None = None) -> Path:
 
 async def append_metric_event(
     event: MetricEventPayload,
-    file_path: Path | None = None,
+    file_path: MetricFilePath = None,
 ) -> None:
     record = MetricEventRecord.model_validate(dict(event))
-    target = file_path or default_metric_file_path()
+    target = _metric_file_path(file_path)
     line = json.dumps(_event_with_timestamp(record), ensure_ascii=False) + "\n"
     await asyncio.to_thread(_append_line, target, line)
 
 
 async def safe_append_metric_event(
     event: MetricEventPayload,
-    file_path: Path | None = None,
+    file_path: MetricFilePath = None,
 ) -> None:
     try:
         await append_metric_event(event, file_path=file_path)
@@ -77,13 +78,14 @@ async def safe_append_metric_event(
         return
 
 
-def compute_metric_summary(file_path: Path | None = None) -> MetricSummary:
+async def compute_metric_summary(file_path: MetricFilePath = None) -> MetricSummary:
     event_counts: dict[MetricEventName, int] = {}
     submitted: set[str] = set()
     finalized: set[str] = set()
     residual_errors: set[str] = set()
 
-    for event in _read_metric_events(file_path or default_metric_file_path()):
+    events = await asyncio.to_thread(_read_metric_events, _metric_file_path(file_path))
+    for event in events:
         name = event.name
         session_id = event.session_id
 
@@ -110,6 +112,12 @@ def _event_with_timestamp(event: MetricEventRecord) -> dict[str, object]:
 
 def _utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _metric_file_path(file_path: MetricFilePath) -> Path:
+    if file_path is None:
+        return default_metric_file_path()
+    return Path(file_path)
 
 
 def _append_line(target: Path, line: str) -> None:

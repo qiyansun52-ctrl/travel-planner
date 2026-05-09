@@ -71,6 +71,51 @@ async def test_corrective_pass_runs_once_for_error_severity(monkeypatch) -> None
 
 
 @pytest.mark.asyncio
+async def test_corrective_pass_sends_only_errors_to_planner(monkeypatch) -> None:
+    planner_issue_contexts = []
+    original_planner = workflow.run_planner_node
+    error = fixtures.validator_error()
+    warning = fixtures.validator_error().model_copy(
+        update={
+            "code": "long_walk",
+            "severity": "warning",
+            "message": "Day has a long walking segment.",
+            "suggested_action": "Consider adding a rest stop.",
+        }
+    )
+
+    async def recording_planner(state):
+        parsed = validate_graph_state(state)
+        planner_issue_contexts.append(parsed.validator_issues)
+        return await original_planner(state)
+
+    async def validator_with_mixed_issues(state):
+        parsed = validate_graph_state(state)
+        issues = [warning, error]
+        itinerary = parsed.itinerary.model_copy(update={"validator_issues": issues})
+        return {
+            "validator_issues": [issue.model_dump(mode="json") for issue in issues],
+            "itinerary": itinerary.model_dump(mode="json"),
+            "progress_events": [
+                {
+                    "node": "validator",
+                    "status": "completed",
+                    "payload": {"issue_count": 2, "error_count": 1},
+                    "created_at": parsed.session.updated_at.isoformat(),
+                }
+            ],
+        }
+
+    monkeypatch.setattr(workflow, "run_planner_node", recording_planner)
+    monkeypatch.setattr(workflow, "run_validator_node", validator_with_mixed_issues)
+
+    result = await workflow.run_full_planning_workflow(fixtures.session())
+
+    assert planner_issue_contexts == [[], [error]]
+    assert result.validator_issues == [warning, error]
+
+
+@pytest.mark.asyncio
 async def test_warning_only_validation_does_not_rerun_planner(monkeypatch) -> None:
     planner_calls = 0
     original_planner = workflow.run_planner_node

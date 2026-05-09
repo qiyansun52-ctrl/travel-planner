@@ -39,9 +39,12 @@ async def run_type_c_adjustment(
             fork_requested=True,
         )
 
-    return AdjustmentGraphResult(
-        session_id=session.session_id,
-        classification=classification,
-        message="Session reset to discovery.",
-        reset_to_step="discovery",
-    )
+    if action == "replan":
+        return AdjustmentGraphResult(
+            session_id=session.session_id,
+            classification=classification,
+            message="Session reset to discovery.",
+            reset_to_step="discovery",
+        )
+
+    raise ValueError(f"Unknown Type C action: {action}")

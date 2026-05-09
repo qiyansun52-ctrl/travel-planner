@@ -24,10 +24,13 @@ RouteName = Literal["prepare_corrective", "end"]
 
 async def prepare_corrective_node(state: GraphState) -> GraphState:
     parsed = validate_graph_state(state)
+    error_issues = [
+        issue for issue in parsed.validator_issues if issue.severity == "error"
+    ]
     return GraphState(
         corrective_attempts=parsed.corrective_attempts + 1,
         validator_issues=[
-            issue.model_dump(mode="json") for issue in parsed.validator_issues
+            issue.model_dump(mode="json") for issue in error_issues
         ],
     )
 

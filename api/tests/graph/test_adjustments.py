@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.graph.adjustments import run_adjustment_workflow
+from app.graph.adjustments.type_c import run_type_c_adjustment
 from app.graph.nodes.adjustment_classifier import classify_adjustment
 from tests.graph import fixtures
 
@@ -164,3 +165,15 @@ async def test_type_c_action_cancel_returns_cancelled_message() -> None:
     )
 
     assert result.message == "Root change cancelled."
+
+
+@pytest.mark.asyncio
+async def test_type_c_invalid_action_is_rejected_without_reset() -> None:
+    classification = classify_adjustment("预算改成 3000")
+
+    with pytest.raises(ValueError, match="Unknown Type C action"):
+        await run_type_c_adjustment(
+            planned_session(),
+            classification,
+            action="restart",  # type: ignore[arg-type]
+        )
