@@ -29,6 +29,8 @@ npm run build
 npm run test:e2e
 ```
 
+`npm run test:e2e` starts both services in fixture mode with dummy provider keys.
+
 ## Canonical Flow
 
 ```text

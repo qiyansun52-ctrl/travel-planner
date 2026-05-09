@@ -1,11 +1,5 @@
 import type { Metadata } from "next"
-import { Noto_Sans_SC } from "next/font/google"
 import "./globals.css"
-
-const notoSans = Noto_Sans_SC({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-})
 
 export const metadata: Metadata = {
   title: "旅行规划 AI",
@@ -19,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className={notoSans.className}>{children}</body>
+      <body>{children}</body>
     </html>
   )
 }
