@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.routes.discover import router as discover_router
 from app.routes.plan import router as plan_router
+from app.routes.sessions import router as sessions_router
 
 app = FastAPI(title="Travel Planner API", version="0.1.0")
 
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(discover_router)
 app.include_router(plan_router)
+app.include_router(sessions_router)
 
 
 @app.get("/health")
