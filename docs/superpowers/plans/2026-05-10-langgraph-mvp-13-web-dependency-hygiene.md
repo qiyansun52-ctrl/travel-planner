@@ -114,7 +114,7 @@ git commit -m "chore(web): remove stale backend dependencies"
 - Modify: `web/src/lib/apiClient.test.ts`
 - Modify: `web/next.config.ts`
 
-- [ ] **Step 1: Update API client default**
+- [x] **Step 1: Update API client default**
 
 In `web/src/lib/apiClient.ts`, replace:
 
@@ -128,7 +128,7 @@ with:
 const DEFAULT_API_URL = "http://127.0.0.1:8000"
 ```
 
-- [ ] **Step 2: Update Next rewrite default**
+- [x] **Step 2: Update Next rewrite default**
 
 In `web/next.config.ts`, replace:
 
@@ -142,11 +142,11 @@ with:
 const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "")
 ```
 
-- [ ] **Step 3: Update API client tests**
+- [x] **Step 3: Update API client tests**
 
 Replace every expected `http://localhost:8000/...` in `web/src/lib/apiClient.test.ts` with `http://127.0.0.1:8000/...`.
 
-- [ ] **Step 4: Run API client tests**
+- [x] **Step 4: Run API client tests**
 
 Run from `web/`:
 
@@ -156,7 +156,7 @@ npm run test -- src/lib/apiClient.test.ts
 
 Expected: API client tests pass with the new default origin.
 
-- [ ] **Step 5: Commit default origin alignment**
+- [x] **Step 5: Commit default origin alignment**
 
 ```bash
 git add web/src/lib/apiClient.ts web/src/lib/apiClient.test.ts web/next.config.ts

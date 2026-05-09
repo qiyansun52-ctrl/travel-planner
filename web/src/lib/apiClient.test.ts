@@ -70,7 +70,7 @@ describe("apiClient", () => {
 
     await createSession(hardConstraints)
 
-    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:8000/api/sessions")
+    expect(fetchMock.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/sessions")
   })
 
   it("maps session workflow calls to canonical nested routes", async () => {
@@ -91,13 +91,13 @@ describe("apiClient", () => {
     })
 
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
-      "http://localhost:8000/api/sessions/s1",
-      "http://localhost:8000/api/sessions/s1/discovery",
-      "http://localhost:8000/api/sessions/s1/selection",
-      "http://localhost:8000/api/sessions/s1/preferences",
-      "http://localhost:8000/api/sessions/s1/itinerary",
-      "http://localhost:8000/api/sessions/s1/stay-override",
-      "http://localhost:8000/api/sessions/s1/adjustments",
+      "http://127.0.0.1:8000/api/sessions/s1",
+      "http://127.0.0.1:8000/api/sessions/s1/discovery",
+      "http://127.0.0.1:8000/api/sessions/s1/selection",
+      "http://127.0.0.1:8000/api/sessions/s1/preferences",
+      "http://127.0.0.1:8000/api/sessions/s1/itinerary",
+      "http://127.0.0.1:8000/api/sessions/s1/stay-override",
+      "http://127.0.0.1:8000/api/sessions/s1/adjustments",
     ])
 
     expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
