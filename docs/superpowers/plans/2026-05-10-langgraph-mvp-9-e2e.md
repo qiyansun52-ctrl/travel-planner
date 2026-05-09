@@ -21,7 +21,8 @@
 
 - Create `api/app/llm/fixtures.py`: central fixture-mode helper and dummy provider key constants for offline runs.
 - Create `api/app/providers/fixtures.py`: deterministic provider fixture helpers for source notes and normalized places.
-- Modify `api/app/routes/_shared.py`: use the shared `fixture_mode_enabled()`.
+- Modify `api/app/routes/_shared.py`: remove the duplicate fixture-mode helper.
+- Modify `api/app/routes/discovery.py`: import `fixture_mode_enabled()` from `api/app/llm/fixtures.py`.
 - Modify `api/app/graph/nodes/discovery.py`: use provider fixture helpers for fixture source notes and places.
 - Create `api/tests/integration/test_full_workflow.py`: route-level full workflow with fixture mode, including Type B adjustment.
 - Create `web/e2e/helpers/mvpFlow.ts`: reusable browser flow helper.
@@ -143,7 +144,7 @@ async def test_fixture_workflow_surfaces_budget_overrun(client: httpx.AsyncClien
 
     assert loaded.status_code == 200
     assert any(
-        issue["code"] == "budget_overrun"
+        issue["code"] == "BUDGET_OVERRUN"
         for issue in loaded.json()["itinerary"]["validator_issues"]
     )
 
@@ -223,13 +224,13 @@ def fixture_source_note() -> SourceNote:
 
 - [ ] **Step 5: Wire helpers into existing code**
 
-In `api/app/routes/_shared.py`:
+In `api/app/routes/_shared.py`, remove the local `fixture_mode_enabled()` definition and any now-unused imports.
+
+In `api/app/routes/discovery.py`, import:
 
 ```python
 from app.llm.fixtures import fixture_mode_enabled
 ```
-
-Remove the local `fixture_mode_enabled()` definition.
 
 In `api/app/graph/nodes/discovery.py`, import:
 
@@ -355,7 +356,7 @@ test("surfaces budget overrun in fixture mode", async ({ page }) => {
   await expect(page.getByText(/Budget warning/)).toBeVisible()
   await selectDiscoveryCards(page)
   await submitPreferences(page)
-  await expect(page.getByText(/budget_overrun/).first()).toBeVisible()
+  await expect(page.getByText(/BUDGET_OVERRUN/).first()).toBeVisible()
 })
 ```
 

@@ -18,9 +18,12 @@ from app.models.schemas import (
     DiscoveryOutput,
     DiscoveryState,
     FoodSummary,
-    NormalizedPlace,
     PlanningSession,
-    SourceNote,
+)
+from app.providers.fixtures import (
+    fixture_place,
+    fixture_provider_for_country,
+    fixture_source_note,
 )
 
 
@@ -166,7 +169,7 @@ def _normalize_discovery_card(card: DiscoveryCard, session: PlanningSession) -> 
 
 def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput:
     constraints = session.hard_constraints
-    provider = "amap" if constraints.destination_country_code == "CN" else "mapbox"
+    provider = fixture_provider_for_country(constraints.destination_country_code)
     city = constraints.destination_city
     currency = constraints.currency
     free_band = band(currency, 0, 0, "per_person", "high")
@@ -186,7 +189,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             cost_estimate=free_band,
             image_url="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
             reservation_hint=None,
-            place=_place("waterfront", f"{city} waterfront", provider),
+            place=fixture_place("waterfront", f"{city} waterfront", provider),
             enrichment_status="complete",
         ),
         DiscoveryCard(
@@ -200,7 +203,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             cost_estimate=low_band,
             image_url=None,
             reservation_hint=None,
-            place=_place("old-town", f"{city} old town", provider),
+            place=fixture_place("old-town", f"{city} old town", provider),
             enrichment_status="partial",
         ),
         DiscoveryCard(
@@ -214,7 +217,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             cost_estimate=low_band,
             image_url="https://images.unsplash.com/photo-1518998053901-5348d3961a04",
             reservation_hint="Reserve a morning entry if weekend demand is high.",
-            place=_place("museum", f"{city} city museum", provider),
+            place=fixture_place("museum", f"{city} city museum", provider),
             enrichment_status="complete",
         ),
         DiscoveryCard(
@@ -228,7 +231,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             cost_estimate=medium_band,
             image_url="https://images.unsplash.com/photo-1504674900247-0877df9cc836",
             reservation_hint=None,
-            place=_place("market", f"{city} morning market", provider),
+            place=fixture_place("market", f"{city} morning market", provider),
             enrichment_status="complete",
         ),
         DiscoveryCard(
@@ -242,7 +245,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             cost_estimate=high_band,
             image_url=None,
             reservation_hint=None,
-            place=_place("viewpoint", f"{city} sunset viewpoint", provider),
+            place=fixture_place("viewpoint", f"{city} sunset viewpoint", provider),
             enrichment_status="partial",
         ),
         DiscoveryCard(
@@ -289,25 +292,7 @@ def _build_fixture_discovery_output(session: PlanningSession) -> DiscoveryOutput
             attractions=band(currency, 300, 700, "per_trip"),
             other=band(currency, 200, 400, "per_trip", "low"),
         ),
-        source_notes=[
-            SourceNote(
-                provider="fixture",
-                url=None,
-                note="Fixture-backed MVP discovery; live enrichment uses configured providers.",
-            )
-        ],
-    )
-
-
-def _place(id_suffix: str, name: str, provider: str) -> NormalizedPlace:
-    offset = len(id_suffix) / 1000
-    return NormalizedPlace(
-        id=f"place_{id_suffix}",
-        name=name,
-        coordinate=Coordinate(lat=31.23 + offset, lng=121.47 + offset),
-        address=name,
-        category="poi",
-        provider=provider,
+        source_notes=[fixture_source_note()],
     )
 
 

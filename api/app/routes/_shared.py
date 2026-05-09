@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import AsyncIterator
 from typing import Literal
 from uuid import uuid4
@@ -82,10 +81,6 @@ def route_error(error: Exception) -> HTTPException:
     if isinstance(error, SessionRepositoryError):
         return HTTPException(status_code=500, detail=str(error))
     return HTTPException(status_code=502, detail=str(error))
-
-
-def fixture_mode_enabled() -> bool:
-    return os.environ.get("E2E_FIXTURE_MODE") == "1"
 
 
 async def safe_metric(event: MetricEventPayload) -> None:

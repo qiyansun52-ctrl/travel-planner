@@ -4,10 +4,10 @@ from fastapi import APIRouter, HTTPException
 
 from app.domain.selection import normalize_selected_card_ids
 from app.graph.nodes.discovery import run_discovery_agent
+from app.llm.fixtures import fixture_mode_enabled
 from app.models.schemas import DiscoveryState, PlanningSession
 from app.routes._shared import (
     SelectionUpdate,
-    fixture_mode_enabled,
     repository,
     require_session,
     route_error,
