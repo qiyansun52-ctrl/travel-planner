@@ -1,4 +1,4 @@
-.PHONY: gen-types check-types launch-check smoke regression
+.PHONY: gen-types check-types launch-check production-check ops-summary smoke smoke-real regression
 
 gen-types:
 	cd web && npm run gen:types
@@ -9,8 +9,18 @@ check-types:
 launch-check:
 	python3 scripts/check_launch_readiness.py
 
+production-check:
+	cd api && uv run python scripts/check_production_readiness.py
+
+ops-summary:
+	cd api && uv run python scripts/ops_summary.py
+
 smoke:
 	cd api && bash scripts/run_fixture_smoke.sh
+
+smoke-real:
+	cd api && uv run python scripts/smoke_llm.py
+	cd api && uv run python scripts/smoke_amap_mcp.py
 
 regression:
 	python3 scripts/check_launch_readiness.py

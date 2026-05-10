@@ -8,6 +8,7 @@ from app.llm.fixtures import fixture_mode_enabled
 from app.models.schemas import DiscoveryState, PlanningSession
 from app.routes._shared import (
     SelectionUpdate,
+    guard_expensive_operation,
     repository,
     require_session,
     route_error,
@@ -21,8 +22,14 @@ router = APIRouter(prefix="/api/sessions/{session_id}", tags=["discovery"])
 async def run_discovery(session_id: str) -> PlanningSession:
     repo = repository()
     session = await require_session(session_id, repo)
+
     if session.discovery_state and session.discovery_state.payload:
         return session
+
+    try:
+        await guard_expensive_operation(session_id, "discovery")
+    except Exception as exc:
+        raise route_error(exc) from exc
 
     try:
         payload = await run_discovery_agent(session, fixture_mode=fixture_mode_enabled())

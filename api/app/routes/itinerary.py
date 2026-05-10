@@ -18,9 +18,11 @@ from app.graph.workflow import (
 )
 from app.llm.fixtures import fixture_mode_enabled
 from app.models.schemas import PlanningSession, ValidatorIssue
+from app.persistence import SessionRepository
 from app.routes._shared import (
     ItineraryRequest,
     StayOverrideUpdate,
+    guard_expensive_operation,
     persist_planning_result,
     progress_payload,
     repository,
@@ -62,6 +64,7 @@ async def run_itinerary(session_id: str, body: ItineraryRequest) -> PlanningSess
     session = await require_session(session_id, repo)
     _assert_itinerary_ready(session)
     try:
+        await guard_expensive_operation(session_id, "itinerary")
         result = await _run_planning(
             session,
             body.planner_only_reason,
@@ -86,6 +89,13 @@ async def update_stay_override(
 ) -> PlanningSession:
     repo = repository()
     try:
+        session = await require_session(session_id, repo)
+        if session.stay_recommendation is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Session {session_id} has no stay recommendation",
+            )
+        await guard_expensive_operation(session_id, "itinerary")
         with_override = await repo.update_stay_override(session_id, body.stay_option_id)
         result = await run_planner_only_workflow(
             with_override,
@@ -93,6 +103,8 @@ async def update_stay_override(
             fixture_mode=fixture_mode_enabled(),
         )
         updated = await persist_planning_result(repo, session_id, result)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise route_error(exc) from exc
 
@@ -108,18 +120,29 @@ async def update_stay_override(
 
 @router.get("/itinerary/stream")
 async def stream_itinerary(session_id: str) -> StreamingResponse:
+    repo = repository()
+    try:
+        session = await require_session(session_id, repo)
+        _assert_itinerary_ready(session)
+        await guard_expensive_operation(session_id, "itinerary")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise route_error(exc) from exc
+
     return StreamingResponse(
-        _stream_itinerary_events(session_id),
+        _stream_itinerary_events(repo, session),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache"},
     )
 
 
-async def _stream_itinerary_events(session_id: str) -> AsyncIterator[str]:
-    repo = repository()
+async def _stream_itinerary_events(
+    repo: SessionRepository,
+    session: PlanningSession,
+) -> AsyncIterator[str]:
+    session_id = session.session_id
     try:
-        session = await require_session(session_id, repo)
-        _assert_itinerary_ready(session)
         yield sse_frame(
             "progress",
             {

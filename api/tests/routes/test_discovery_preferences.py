@@ -27,6 +27,17 @@ async def create_session(client: httpx.AsyncClient) -> str:
     return response.json()["session_id"]
 
 
+def _install_operation_budget(monkeypatch, limits: dict[str, int]) -> None:
+    from app.ops.operation_budget import SessionOperationBudget
+    from app.routes import _shared
+
+    monkeypatch.setattr(
+        _shared,
+        "_OPERATION_BUDGET",
+        SessionOperationBudget(default_limits=limits),
+    )
+
+
 async def test_run_discovery_is_idempotent_and_logs_metrics(
     client: httpx.AsyncClient,
     tmp_path: Path,
@@ -71,6 +82,30 @@ async def test_run_discovery_returns_concurrent_success_when_late_request_fails(
 
     assert response.status_code == 200
     assert response.json()["discovery_state"]["payload"]["cards"]
+
+
+async def test_discovery_budget_applies_to_generation_not_cached_request(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    import app.routes.discovery as discovery_route
+
+    _install_operation_budget(
+        monkeypatch,
+        {"discovery": 1, "itinerary": 4, "adjustment": 8},
+    )
+    session_id = await create_session(client)
+
+    first = await client.post(f"/api/sessions/{session_id}/discovery")
+    second = await client.post(f"/api/sessions/{session_id}/discovery")
+    await discovery_route.repository().reset_to_step(session_id, "discovery")
+    third = await client.post(f"/api/sessions/{session_id}/discovery")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["discovery_state"] == first.json()["discovery_state"]
+    assert third.status_code == 429
+    assert "Operation budget exceeded for discovery" in third.json()["detail"]
 
 
 async def test_update_selection_dedupes_ids(client: httpx.AsyncClient) -> None:

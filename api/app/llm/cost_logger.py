@@ -1,4 +1,4 @@
-"""LLM cost logger -- async append to .data/llm-cost.jsonl.
+"""LLM cost logger -- async append to the local metrics directory.
 
 Estimates tokens by character count (matches web/src/server/llm/costLogger.ts).
 Failures are swallowed: cost logging must never affect the user-facing LLM call.
@@ -67,6 +67,9 @@ def default_cost_log_path() -> Path:
     override = os.environ.get("LLM_COST_LOG_PATH")
     if override:
         return Path(override)
+    metrics_dir = os.environ.get("METRICS_DATA_DIR")
+    if metrics_dir:
+        return Path(metrics_dir) / DEFAULT_COST_LOG_FILENAME
     return DEFAULT_DATA_DIR / DEFAULT_COST_LOG_FILENAME
 
 

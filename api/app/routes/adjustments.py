@@ -11,6 +11,7 @@ from app.routes._shared import (
     AdjustmentInput,
     AdjustmentResponse,
     conversation_turn_id,
+    guard_expensive_operation,
     persist_adjustment_result,
     repository,
     require_session,
@@ -29,6 +30,7 @@ async def submit_adjustment(
     repo = repository()
     session = await require_session(session_id, repo)
     try:
+        await guard_expensive_operation(session_id, "adjustment")
         result = await run_adjustment_workflow(
             session,
             message=body.message,

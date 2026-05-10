@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,9 +28,19 @@ class Settings(BaseSettings):
     gemini_api_key: str
     tavily_api_key: str
     gemini_model: str = "gemini-2.5-flash"
+    environment: Literal["development", "test", "production"] = "development"
+    e2e_fixture_mode: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
     cors_origins: str = "http://localhost:3000"
+    session_data_dir: str = ".data"
+    metrics_data_dir: str = ".data"
+    rate_limit_enabled: bool = True
+    rate_limit_max_requests: int = 60
+    rate_limit_window_seconds: int = 60
+    max_discovery_runs_per_session: int = 3
+    max_itinerary_runs_per_session: int = 4
+    max_adjustments_per_session: int = 8
 
     model_config = SettingsConfigDict(
         env_file=DEFAULT_ENV_FILE,

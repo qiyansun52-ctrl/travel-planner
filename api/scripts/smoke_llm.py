@@ -25,9 +25,12 @@ class CityHint(BaseModel):
 
 
 async def main() -> int:
+    from app.config import load_environment
+
+    load_environment()
     if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_PROVIDER_API_KEY")):
-        print("[smoke] skipped: no GEMINI_API_KEY in env", file=sys.stderr)
-        return 0
+        print("[smoke] failed: no GEMINI_API_KEY in env", file=sys.stderr)
+        return 1
 
     from app.llm import generate_structured
 

@@ -13,12 +13,19 @@ def test_settings_accepts_shared_env_file_keys(tmp_path, monkeypatch):
                 "GEMINI_API_KEY=test-gemini",
                 "TAVILY_API_KEY=test-tavily",
                 "GEMINI_MODEL=gemini-2.5-flash",
+                "ENVIRONMENT=development",
                 "AMAP_API_KEY=test-amap",
                 "MAPBOX_ACCESS_TOKEN=test-mapbox",
                 "SESSION_DATA_DIR=.data",
                 "METRICS_DATA_DIR=.data",
                 "CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000",
                 "E2E_FIXTURE_MODE=0",
+                "RATE_LIMIT_ENABLED=1",
+                "RATE_LIMIT_MAX_REQUESTS=60",
+                "RATE_LIMIT_WINDOW_SECONDS=60",
+                "MAX_DISCOVERY_RUNS_PER_SESSION=3",
+                "MAX_ITINERARY_RUNS_PER_SESSION=4",
+                "MAX_ADJUSTMENTS_PER_SESSION=8",
                 "HOST=127.0.0.1",
                 "PORT=8000",
             ]
@@ -29,7 +36,17 @@ def test_settings_accepts_shared_env_file_keys(tmp_path, monkeypatch):
         "GEMINI_API_KEY",
         "TAVILY_API_KEY",
         "GEMINI_MODEL",
+        "ENVIRONMENT",
         "CORS_ORIGINS",
+        "E2E_FIXTURE_MODE",
+        "SESSION_DATA_DIR",
+        "METRICS_DATA_DIR",
+        "RATE_LIMIT_ENABLED",
+        "RATE_LIMIT_MAX_REQUESTS",
+        "RATE_LIMIT_WINDOW_SECONDS",
+        "MAX_DISCOVERY_RUNS_PER_SESSION",
+        "MAX_ITINERARY_RUNS_PER_SESSION",
+        "MAX_ADJUSTMENTS_PER_SESSION",
         "HOST",
         "PORT",
     ):
@@ -39,10 +56,20 @@ def test_settings_accepts_shared_env_file_keys(tmp_path, monkeypatch):
 
     assert settings.gemini_api_key == "test-gemini"
     assert settings.tavily_api_key == "test-tavily"
+    assert settings.environment == "development"
+    assert settings.e2e_fixture_mode is False
+    assert settings.session_data_dir == ".data"
+    assert settings.metrics_data_dir == ".data"
     assert settings.cors_origin_list == [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+    assert settings.rate_limit_enabled is True
+    assert settings.rate_limit_max_requests == 60
+    assert settings.rate_limit_window_seconds == 60
+    assert settings.max_discovery_runs_per_session == 3
+    assert settings.max_itinerary_runs_per_session == 4
+    assert settings.max_adjustments_per_session == 8
 
 
 def test_load_environment_populates_process_env_for_direct_consumers(

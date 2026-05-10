@@ -15,6 +15,17 @@ async def planned_session(client: httpx.AsyncClient) -> str:
     return session_id
 
 
+def _install_operation_budget(monkeypatch, limits: dict[str, int]) -> None:
+    from app.ops.operation_budget import SessionOperationBudget
+    from app.routes import _shared
+
+    monkeypatch.setattr(
+        _shared,
+        "_OPERATION_BUDGET",
+        SessionOperationBudget(default_limits=limits),
+    )
+
+
 async def test_type_a_adjustment_persists_new_itinerary(
     client: httpx.AsyncClient,
     tmp_path: Path,
@@ -35,6 +46,29 @@ async def test_type_a_adjustment_persists_new_itinerary(
     metrics_path = tmp_path / "metrics" / "events.jsonl"
     names = [json.loads(line)["name"] for line in metrics_path.read_text().splitlines()]
     assert "adjustment_classified" in names
+
+
+async def test_adjustment_budget_returns_429_after_limit(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    _install_operation_budget(
+        monkeypatch,
+        {"discovery": 3, "itinerary": 4, "adjustment": 1},
+    )
+    session_id = await planned_session(client)
+
+    first = await client.post(
+        f"/api/sessions/{session_id}/adjustments",
+        json={"message": "把第二天下午安排轻松一点"},
+    )
+    second = await client.post(
+        f"/api/sessions/{session_id}/adjustments",
+        json={"message": "再轻松一点"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
 
 
 async def test_low_confidence_adjustment_returns_clarification(

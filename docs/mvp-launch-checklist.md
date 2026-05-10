@@ -9,12 +9,20 @@ Create `api/.env` from `api/.env.example` and `web/.env.local` from `web/.env.ex
 - `GEMINI_API_KEY`: Gemini LLM key for the Python backend.
 - `TAVILY_API_KEY`: Tavily search key for discovery/provider enrichment.
 - `GEMINI_MODEL`: Gemini model name, normally `gemini-2.5-flash`.
+- `ENVIRONMENT`: `development`, `test`, or `production`; production enables strict readiness checks.
 - `AMAP_API_KEY`: China geocoding and routing.
 - `MAPBOX_ACCESS_TOKEN`: global geocoding and routing.
-- `SESSION_DATA_DIR`: session storage directory, defaults to `.data`.
-- `METRICS_DATA_DIR`: metrics and cost log directory, defaults to `.data`.
+- `AMAP_MCP_URL`: running AMap MCP server URL, required before `make smoke-real`.
+- `SESSION_DATA_DIR`: session storage directory, defaults to `.data`; production mode requires an explicit non-`.data` path.
+- `METRICS_DATA_DIR`: metrics and cost log directory, defaults to `.data`; production mode requires an explicit non-`.data` path.
 - `CORS_ORIGINS`: allowed browser origins for local web clients.
 - `E2E_FIXTURE_MODE`: set to `1` for offline fixture-backed flows.
+- `RATE_LIMIT_ENABLED`: enables the request limiter; keep enabled for production demos.
+- `RATE_LIMIT_MAX_REQUESTS`: maximum requests per rate-limit window.
+- `RATE_LIMIT_WINDOW_SECONDS`: rate-limit window size in seconds.
+- `MAX_DISCOVERY_RUNS_PER_SESSION`: per-session budget for discovery runs.
+- `MAX_ITINERARY_RUNS_PER_SESSION`: per-session budget for itinerary generation runs.
+- `MAX_ADJUSTMENTS_PER_SESSION`: per-session budget for adjustment requests.
 - `HOST` and `PORT`: API server bind settings.
 
 `web/.env.local` owns only the public browser API target:
@@ -50,6 +58,18 @@ make launch-check
 make smoke
 make regression
 ```
+
+## Production-Like Demo Gate
+
+1. Rotate exposed provider keys.
+2. Set `ENVIRONMENT=production`.
+3. Set `E2E_FIXTURE_MODE=0`.
+4. Set `SESSION_DATA_DIR` and `METRICS_DATA_DIR` to explicit non-`.data` paths writable by the API process.
+5. Use production web origins only in `CORS_ORIGINS`.
+6. Start the AMap MCP server and set `AMAP_MCP_URL`.
+7. Run `make production-check`.
+8. Run `make smoke-real` only after confirming live provider quota is acceptable.
+9. Run `make ops-summary` after demo sessions to inspect cost and failure counts.
 
 ## API Smoke
 

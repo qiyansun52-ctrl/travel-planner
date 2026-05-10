@@ -22,6 +22,17 @@ async def prepared_session(client: httpx.AsyncClient) -> str:
     return session_id
 
 
+def _install_operation_budget(monkeypatch, limits: dict[str, int]) -> None:
+    from app.ops.operation_budget import SessionOperationBudget
+    from app.routes import _shared
+
+    monkeypatch.setattr(
+        _shared,
+        "_OPERATION_BUDGET",
+        SessionOperationBudget(default_limits=limits),
+    )
+
+
 async def test_itinerary_route_runs_graph_persists_result_and_logs_metrics(
     client: httpx.AsyncClient,
     tmp_path: Path,
@@ -74,6 +85,69 @@ async def test_itinerary_route_requires_discovery_and_preferences(
     response = await client.post(f"/api/sessions/{session_id}/itinerary", json={})
 
     assert response.status_code == 409
+
+
+async def test_itinerary_budget_returns_429_after_limit(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    _install_operation_budget(
+        monkeypatch,
+        {"discovery": 3, "itinerary": 1, "adjustment": 8},
+    )
+    session_id = await prepared_session(client)
+
+    first = await client.post(f"/api/sessions/{session_id}/itinerary", json={})
+    second = await client.post(f"/api/sessions/{session_id}/itinerary", json={})
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
+async def test_itinerary_stream_budget_returns_429_after_limit(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    _install_operation_budget(
+        monkeypatch,
+        {"discovery": 3, "itinerary": 1, "adjustment": 8},
+    )
+    session_id = await prepared_session(client)
+
+    async with client.stream(
+        "GET",
+        f"/api/sessions/{session_id}/itinerary/stream",
+    ) as first:
+        assert first.status_code == 200
+        await first.aread()
+    second = await client.get(f"/api/sessions/{session_id}/itinerary/stream")
+
+    assert second.status_code == 429
+
+
+async def test_stay_override_budget_returns_429_after_limit(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    _install_operation_budget(
+        monkeypatch,
+        {"discovery": 3, "itinerary": 2, "adjustment": 8},
+    )
+    session_id = await prepared_session(client)
+    itinerary = await client.post(f"/api/sessions/{session_id}/itinerary", json={})
+    stay_id = itinerary.json()["stay_recommendation"]["primary"]["id"]
+
+    first = await client.patch(
+        f"/api/sessions/{session_id}/stay-override",
+        json={"stay_option_id": stay_id},
+    )
+    second = await client.patch(
+        f"/api/sessions/{session_id}/stay-override",
+        json={"stay_option_id": stay_id},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
 
 
 async def test_stay_override_replans_existing_itinerary(

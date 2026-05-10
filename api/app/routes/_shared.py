@@ -8,12 +8,18 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.config import get_settings
 from app.graph.state import AdjustmentGraphResult, PlanningGraphResult, ProgressEvent
 from app.metrics import MetricEventPayload, safe_append_metric_event
 from app.models.schemas import (
     AdjustmentRequest,
     PlanningSession,
     Preference,
+)
+from app.ops.operation_budget import (
+    OperationBudgetExceeded,
+    OperationName,
+    SessionOperationBudget,
 )
 from app.persistence import (
     ArchivedSessionMutationError,
@@ -61,6 +67,25 @@ def repository() -> SessionRepository:
     return get_default_session_repository()
 
 
+def _budget_limits() -> dict[OperationName, int]:
+    settings = get_settings()
+    return {
+        "discovery": settings.max_discovery_runs_per_session,
+        "itinerary": settings.max_itinerary_runs_per_session,
+        "adjustment": settings.max_adjustments_per_session,
+    }
+
+
+_OPERATION_BUDGET: SessionOperationBudget | None = None
+
+
+def _operation_budget() -> SessionOperationBudget:
+    global _OPERATION_BUDGET
+    if _OPERATION_BUDGET is None:
+        _OPERATION_BUDGET = SessionOperationBudget(default_limits=_budget_limits())
+    return _OPERATION_BUDGET
+
+
 async def require_session(
     session_id: str,
     repo: SessionRepository | None = None,
@@ -72,6 +97,8 @@ async def require_session(
 
 
 def route_error(error: Exception) -> HTTPException:
+    if isinstance(error, OperationBudgetExceeded):
+        return HTTPException(status_code=429, detail=str(error))
     if isinstance(error, SessionNotFoundError):
         return HTTPException(status_code=404, detail="Session not found")
     if isinstance(error, ArchivedSessionMutationError):
@@ -85,6 +112,20 @@ def route_error(error: Exception) -> HTTPException:
 
 async def safe_metric(event: MetricEventPayload) -> None:
     await safe_append_metric_event(event)
+
+
+async def guard_expensive_operation(
+    session_id: str,
+    operation: OperationName,
+) -> None:
+    _operation_budget().consume(session_id, operation)
+    await safe_metric(
+        {
+            "name": "operation_budget_consumed",
+            "session_id": session_id,
+            "payload": {"operation": operation},
+        }
+    )
 
 
 async def persist_planning_result(

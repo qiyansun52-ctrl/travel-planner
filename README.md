@@ -53,6 +53,21 @@ make regression
 
 `make regression` runs launch docs/env checks, generated-type drift checks, frontend lint/unit/build/e2e, backend pytest, backend ruff, and fixture-backed API smoke.
 
+## Production-Like Demo Guardrails
+
+Default regression is offline and fixture-backed: it uses deterministic provider behavior and does not spend live Gemini, Tavily, or map-provider quota.
+
+Live provider checks are explicit gates:
+
+```bash
+make production-check
+make smoke-real
+make ops-summary
+```
+
+`make smoke-real` uses live Gemini and map providers, so it can consume provider quota. Do not run it in CI unless the CI environment is intentionally configured with production-like keys, quota, and origins.
+It also expects a running AMap MCP server with `AMAP_MCP_URL` set before the gate starts.
+
 ## API Smoke
 
 From the repo root:
@@ -65,4 +80,4 @@ make smoke
 
 ## Planning Docs
 
-The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plan 1-9 are complete; Plan 10-13 are post-roadmap hardening passes for launch readiness, fixture smoke automation, roadmap closure, and web dependency hygiene.
+The original migration roadmap is `docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md`. Plans 1-9 are complete. Plans 10+ are post-roadmap hardening/product polish: Plan18 is complete; Plan19 covers production-readiness guardrails; Plan20 remains product polish.

@@ -16,10 +16,11 @@
 - Plan16 已新增最近行程恢复入口：首页会列出最近 active sessions，并可继续回 discovery/preferences/trips。
 - Plan17 已完成 Mapbox 真实 smoke 和 place quality gate：Mapbox 路线可用，但中国 POI 搜索会返回城市级结果，系统现在会拒绝这种低质量匹配，避免假坐标污染 discovery cards。
 - Plan18 已加入受控 AMap MCP provider 路径和 planner route enrichment：非 fixture 模式下可通过 provider registry 获取真实路线时长，并在不重叠后续行程的前提下插入 transit 段；地图失败时保留原 deterministic itinerary。
+- Plan19 已补上 MVP/local production-readiness guardrails：production env check、in-memory HTTP rate limiting、per-session expensive-operation budgets、ops summary 和 real smoke gate；这些是本地 MVP 防护，不是完整 auth、billing 或 observability 体系。
 
 当前分支：`feature/mvp-web-app`
 
-当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程；Plan16 已补上最近行程恢复入口；Plan17 已补上地图结果质量门槛；Plan18 已完成 AMap MCP 路线 enrichment 的受控接入，等待/执行最终 regression 后提交。
+当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程；Plan16 已补上最近行程恢复入口；Plan17 已补上地图结果质量门槛；Plan18 已完成 AMap MCP 路线 enrichment 的受控接入；Plan19 production-readiness guardrails 已接入并处于文档质量审查/收尾；Plan20 保持为后续 product polish。
 
 ## 今天你完成了什么
 
@@ -190,7 +191,7 @@ Plan16 新增了本地持久化的恢复入口：
 
 - AMap / Mapbox：Mapbox key 已配置且路线 smoke 通过；中国 POI 精度仍建议后续配置 AMap key 做主 provider。当前完成的是主流程接线、graceful fallback 和低质量结果拒绝。
 - 图片：`example.com` 占位图片已在 discovery normalization 中过滤；后续还需要真实图片/provider 或更完整的图片策略。
-- 生产环境：还没有部署、监控、限流、成本保护、用户数据隔离。
+- 生产环境：还没有部署、认证/用户隔离、完整 billing/quota 系统、线上监控和错误告警；Plan19 已补上 MVP/local guardrails（in-memory HTTP rate limiting、per-session expensive-operation budgets、ops summary、production-check），足够做受控本地 demo，但不是完整生产运营体系。
 
 ## 当前已有功能
 
@@ -217,6 +218,7 @@ Plan16 新增了本地持久化的恢复入口：
 - `POST /api/sessions/{session_id}/preferences`
 - `POST /api/sessions/{session_id}/itinerary`
 - `GET /api/sessions/{session_id}/itinerary/stream`
+- `PATCH /api/sessions/{session_id}/stay-override`
 - `POST /api/sessions/{session_id}/adjustments`
 - `GET /health`
 
@@ -244,6 +246,10 @@ Plan16 新增了本地持久化的恢复入口：
 - LLM cost logging。
 - Fixture mode。
 - Real provider mode。
+- In-memory HTTP rate limiting。
+- Per-session expensive-operation budgets。
+- Production readiness check。
+- Ops summary。
 - API smoke script。
 - Fixture smoke runner。
 - Full regression Make target。
@@ -340,10 +346,16 @@ Plan17: Mapbox Place Quality
 - 新增回归测试覆盖“拒绝泛化城市结果”和“跳过第一个坏候选、选后续匹配候选”。
 - 最新完整 regression 全绿：API `351 passed`、web unit `12 passed`、Playwright `5 passed`。
 
-之后建议继续做：
+Plan18 已完成并进入当前基线：
 
-- Plan18: route-duration enrichment，把可用坐标之间的 Mapbox 路线时间接入 planner/validator。
-- Plan19: production readiness，包括部署、限流、日志、成本控制、错误监控。
+- Plan18: route-duration enrichment，已把可用路线 provider 的路线时间接入 planner，并在可用时插入不重叠的 transit 段。
+
+Plan19 正在文档质量审查/收尾：
+
+- Plan19 已补上 production readiness guardrails：生产 env 检查、in-memory HTTP rate limiting、per-session expensive-operation budgets、ops summary、real smoke gate 和上线 checklist。这些是 MVP/local guardrails，不是完整 auth、billing 或线上 observability。
+
+Plan20 保持为后续产品 polish：
+
 - Plan20: product polish，包括真实图片、加载体验、中文 UI 完整化。
 
 ## 当前风险
@@ -354,8 +366,7 @@ Plan17: Mapbox Place Quality
 - 真实 Gemini 输出仍需要长期观察，虽然今天已经加了 schema、净化和重试。
 - 当前 session persistence 是本地文件，不适合多人生产使用。
 - 最近行程恢复是匿名本地恢复，不是账号级跨设备同步。
-- 没有认证、限流、额度保护。
-- 没有线上监控和错误告警。
+- 已有 MVP/local guardrails：in-memory HTTP rate limiting、per-session expensive-operation budgets、ops summary；仍没有认证、账号级 billing/quota、持久化限流存储、线上监控和错误告警。
 
 ## 结束时状态
 

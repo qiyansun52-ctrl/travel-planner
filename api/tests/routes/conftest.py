@@ -19,8 +19,13 @@ def isolated_route_environment(
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
     monkeypatch.setenv("TAVILY_API_KEY", "test-tavily")
     monkeypatch.setenv("E2E_FIXTURE_MODE", "1")
+    monkeypatch.setenv("MAX_DISCOVERY_RUNS_PER_SESSION", "3")
+    monkeypatch.setenv("MAX_ITINERARY_RUNS_PER_SESSION", "4")
+    monkeypatch.setenv("MAX_ADJUSTMENTS_PER_SESSION", "8")
     get_settings.cache_clear()
+    _reset_operation_budget()
     yield
+    _reset_operation_budget()
     get_settings.cache_clear()
 
 
@@ -34,3 +39,9 @@ async def client() -> AsyncIterator[httpx.AsyncClient]:
         base_url="http://testserver",
     ) as async_client:
         yield async_client
+
+
+def _reset_operation_budget() -> None:
+    from app.routes import _shared
+
+    _shared._OPERATION_BUDGET = None

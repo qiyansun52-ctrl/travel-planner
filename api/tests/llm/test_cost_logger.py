@@ -9,6 +9,7 @@ import pytest
 from app.llm.cost_logger import (
     LLMCostLogEntry,
     create_cost_log_entry,
+    default_cost_log_path,
     estimate_token_count,
     log_cost,
 )
@@ -103,6 +104,15 @@ def test_default_path_uses_env_override(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    from app.llm.cost_logger import default_cost_log_path
     monkeypatch.setenv("LLM_COST_LOG_PATH", str(tmp_path / "x.jsonl"))
     assert default_cost_log_path() == tmp_path / "x.jsonl"
+
+
+def test_default_path_uses_metrics_dir_without_cost_log_override(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("LLM_COST_LOG_PATH", raising=False)
+    monkeypatch.setenv("METRICS_DATA_DIR", str(tmp_path / "metrics"))
+
+    assert default_cost_log_path() == tmp_path / "metrics" / "llm-cost.jsonl"

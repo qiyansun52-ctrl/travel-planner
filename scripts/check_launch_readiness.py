@@ -11,12 +11,20 @@ API_ENV_REQUIRED = {
     "GEMINI_API_KEY",
     "TAVILY_API_KEY",
     "GEMINI_MODEL",
+    "ENVIRONMENT",
     "AMAP_API_KEY",
     "MAPBOX_ACCESS_TOKEN",
+    "AMAP_MCP_URL",
     "SESSION_DATA_DIR",
     "METRICS_DATA_DIR",
     "CORS_ORIGINS",
     "E2E_FIXTURE_MODE",
+    "RATE_LIMIT_ENABLED",
+    "RATE_LIMIT_MAX_REQUESTS",
+    "RATE_LIMIT_WINDOW_SECONDS",
+    "MAX_DISCOVERY_RUNS_PER_SESSION",
+    "MAX_ITINERARY_RUNS_PER_SESSION",
+    "MAX_ADJUSTMENTS_PER_SESSION",
     "HOST",
     "PORT",
 }
@@ -130,6 +138,7 @@ def check_docs(failures: list[str]) -> None:
     web_readme = ROOT / "web/README.md"
     web_dev_doc = ROOT / "web/docs/development-environment.md"
     launch_checklist = ROOT / "docs/mvp-launch-checklist.md"
+    work_summary = ROOT / "docs/2026-05-10-real-mvp-work-summary.md"
     roadmap = ROOT / "docs/superpowers/plans/2026-05-09-langgraph-mvp-roadmap.md"
     makefile = ROOT / "Makefile"
 
@@ -139,17 +148,28 @@ def check_docs(failures: list[str]) -> None:
     require_contains(root_readme, "make smoke", failures, reason="root API smoke")
     require_contains(
         root_readme,
-        "Plan 1-9 are complete; Plan 10-13 are post-roadmap hardening passes",
+        "Plans 10+ are post-roadmap hardening/product polish",
         failures,
         reason="root planning status",
     )
+    require_contains(
+        root_readme,
+        "Plan19 covers production-readiness guardrails",
+        failures,
+        reason="current planning status",
+    )
+    require_contains(
+        root_readme,
+        "AMAP_MCP_URL",
+        failures,
+        reason="root real smoke prerequisite",
+    )
     require_not_contains(
         root_readme,
-        "Plan 10 is the launch-readiness pass after Plan 9",
+        "launch-readiness pass after Plan 9",
         failures,
         reason="stale planning status",
     )
-
     require_contains(api_readme, "There are no Next.js API routes", failures, reason="cutover")
     for key in sorted(API_ENV_REQUIRED):
         require_contains(
@@ -158,6 +178,24 @@ def check_docs(failures: list[str]) -> None:
             failures,
             reason="API env documentation",
         )
+    require_contains(
+        api_readme,
+        "AMAP_MCP_URL",
+        failures,
+        reason="API real smoke prerequisite",
+    )
+    require_contains(
+        api_readme,
+        "explicit non-`.data` path",
+        failures,
+        reason="production data directory docs",
+    )
+    require_contains(
+        api_readme,
+        "GET /api/sessions",
+        failures,
+        reason="API endpoint documentation",
+    )
     require_not_contains(
         api_readme,
         "remaining Next.js endpoints are compatibility surfaces",
@@ -252,9 +290,57 @@ def check_docs(failures: list[str]) -> None:
         failures,
         reason="frontend API target",
     )
+    require_contains(
+        launch_checklist,
+        "AMAP_MCP_URL",
+        failures,
+        reason="launch real smoke prerequisite",
+    )
+    require_contains(
+        launch_checklist,
+        "explicit non-`.data` paths",
+        failures,
+        reason="production data directory gate",
+    )
+    require_contains(
+        work_summary,
+        "MVP/local guardrails",
+        failures,
+        reason="Plan19 guardrail status",
+    )
+    require_contains(
+        work_summary,
+        "PATCH /api/sessions/{session_id}/stay-override",
+        failures,
+        reason="work summary endpoint documentation",
+    )
+    require_not_contains(
+        work_summary,
+        "没有认证、限流、额度保护",
+        failures,
+        reason="stale Plan19 risk status",
+    )
 
     require_contains(makefile, "launch-check:", failures, reason="launch gate target")
+    require_contains(
+        makefile,
+        "production-check:",
+        failures,
+        reason="production readiness target",
+    )
+    require_contains(
+        makefile,
+        "ops-summary:",
+        failures,
+        reason="ops status target",
+    )
     require_contains(makefile, "smoke:", failures, reason="API smoke target")
+    require_contains(
+        makefile,
+        "smoke-real:",
+        failures,
+        reason="real provider smoke target",
+    )
     require_contains(
         makefile,
         "cd api && bash scripts/run_fixture_smoke.sh",

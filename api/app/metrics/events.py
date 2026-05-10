@@ -22,6 +22,7 @@ MetricEventName = Literal[
     "type_c_action_taken",
     "provider_fallback_used",
     "stay_override_set",
+    "operation_budget_consumed",
 ]
 
 
