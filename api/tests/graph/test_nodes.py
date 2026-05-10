@@ -350,10 +350,80 @@ async def test_run_discovery_agent_enriches_card_places_with_map_registry(
     assert len(registry.requests) == 1
     assert registry.requests[0].query == "上海 The Bund waterfront walk"
     assert registry.requests[0].country_code == "CN"
-    assert registry.requests[0].limit == 1
+    assert registry.requests[0].limit == 3
     assert registry.requests[0].category == "sightseeing"
     assert result.cards[0].place == map_place()
     assert result.cards[0].enrichment_status == "partial"
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_rejects_generic_map_place_match(
+    monkeypatch,
+) -> None:
+    original_place = fixtures.place("model_oriental_pearl", "Oriental Pearl Tower")
+    card = fixtures.discovery_card().model_copy(
+        update={
+            "name": "Oriental Pearl Tower",
+            "place": original_place,
+            "image_url": None,
+            "enrichment_status": "partial",
+        }
+    )
+    city_place = map_place("mapbox:shanghai", "Shanghai")
+    output_from_llm = fixtures.discovery_output().model_copy(update={"cards": [card]})
+    registry = FakeMapRegistry({"上海 Oriental Pearl Tower": [city_place]})
+
+    async def fake_generate_structured(**_: object):
+        return output_from_llm
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        map_registry=registry,
+        search_provider=None,
+    )
+
+    assert result.cards[0].place == original_place
+
+
+@pytest.mark.asyncio
+async def test_run_discovery_agent_uses_later_matching_map_candidate(
+    monkeypatch,
+) -> None:
+    card = fixtures.discovery_card().model_copy(
+        update={
+            "name": "Oriental Pearl Tower",
+            "place": None,
+            "image_url": None,
+            "enrichment_status": "minimal",
+        }
+    )
+    city_place = map_place("mapbox:shanghai", "Shanghai")
+    tower_place = map_place("mapbox:oriental-pearl", "Oriental Pearl Tower")
+    output_from_llm = fixtures.discovery_output().model_copy(update={"cards": [card]})
+    registry = FakeMapRegistry({"上海 Oriental Pearl Tower": [city_place, tower_place]})
+
+    async def fake_generate_structured(**_: object):
+        return output_from_llm
+
+    monkeypatch.setenv("LLM_PROVIDER_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "app.graph.nodes.discovery.generate_structured",
+        fake_generate_structured,
+    )
+
+    result = await run_discovery_agent(
+        fixtures.session(),
+        map_registry=registry,
+        search_provider=None,
+    )
+
+    assert result.cards[0].place == tower_place
 
 
 @pytest.mark.asyncio

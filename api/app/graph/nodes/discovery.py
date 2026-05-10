@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from collections.abc import Iterable
 from typing import Literal
 
@@ -20,6 +21,7 @@ from app.models.schemas import (
     DiscoveryOutput,
     DiscoveryState,
     FoodSummary,
+    NormalizedPlace,
     PlanningSession,
     SourceNote,
 )
@@ -289,16 +291,99 @@ async def _safe_enrich_card_place(
     request = PlaceSearchRequest(
         query=_place_search_query(card, session),
         country_code=session.hard_constraints.destination_country_code,
-        limit=1,
+        limit=3,
         category=card.category,
     )
     try:
         places = await registry.search_places(request)
     except Exception:
         return card
-    if not places:
+    match = _best_place_match(card, session, places)
+    if match is None:
         return card
-    return card.model_copy(update={"place": places[0]})
+    return card.model_copy(update={"place": match})
+
+
+def _best_place_match(
+    card: DiscoveryCard,
+    session: PlanningSession,
+    places: list[NormalizedPlace],
+) -> NormalizedPlace | None:
+    for place in places:
+        if _is_acceptable_place_match(card, session, place):
+            return place
+    return None
+
+
+def _is_acceptable_place_match(
+    card: DiscoveryCard,
+    session: PlanningSession,
+    place: NormalizedPlace,
+) -> bool:
+    if place.coordinate is None:
+        return False
+
+    destination = _compact_match_text(session.hard_constraints.destination_city)
+    place_name = _compact_match_text(place.name)
+    card_name = _compact_match_text(card.name)
+    if destination and place_name == destination and card_name != destination:
+        return False
+
+    candidate_text = " ".join(
+        value
+        for value in [place.name, place.address, place.category]
+        if value
+    )
+    return _text_matches_place_name(card.name, candidate_text)
+
+
+def _text_matches_place_name(card_name: str, candidate_text: str) -> bool:
+    compact_card = _compact_match_text(card_name)
+    compact_candidate = _compact_match_text(candidate_text)
+    if not compact_card or not compact_candidate:
+        return False
+    if compact_card in compact_candidate:
+        return True
+    if len(compact_candidate) >= 4 and compact_candidate in compact_card:
+        return True
+    return bool(
+        _significant_match_tokens(card_name)
+        & _significant_match_tokens(candidate_text)
+    )
+
+
+_MATCH_TOKEN_RE = re.compile(r"[a-z0-9]+")
+_TOKEN_ALIASES = {"sq": "square"}
+_TOKEN_STOPWORDS = {
+    "and",
+    "area",
+    "at",
+    "for",
+    "in",
+    "of",
+    "on",
+    "place",
+    "road",
+    "scenic",
+    "the",
+    "tour",
+    "trip",
+    "walk",
+}
+
+
+def _compact_match_text(value: str) -> str:
+    return "".join(character.lower() for character in value if character.isalnum())
+
+
+def _significant_match_tokens(value: str) -> set[str]:
+    tokens: set[str] = set()
+    for raw_token in _MATCH_TOKEN_RE.findall(value.lower()):
+        token = _TOKEN_ALIASES.get(raw_token, raw_token)
+        if len(token) < 3 or token in _TOKEN_STOPWORDS:
+            continue
+        tokens.add(token)
+    return tokens
 
 
 def _place_search_query(card: DiscoveryCard, session: PlanningSession) -> str:
