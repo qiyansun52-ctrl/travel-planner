@@ -187,6 +187,24 @@ async def test_falls_back_when_primary_returns_invalid_payload() -> None:
     assert place.provider == "mapbox"
 
 
+async def test_registry_does_not_wrap_provider_programmer_errors() -> None:
+    async def buggy_provider(_: GeocodeRequest) -> NormalizedPlace:
+        raise TypeError("provider bug")
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", buggy_provider),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        }
+    )
+
+    with pytest.raises(TypeError, match="provider bug"):
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+
 async def test_returns_registry_error_when_fallback_also_fails() -> None:
     registry = create_provider_registry(
         map_providers={
@@ -211,6 +229,33 @@ async def test_default_registry_with_missing_env_gives_clear_provider_attempts()
 
     assert ei.value.attempts
     assert "AMAP_API_KEY is not configured" in ei.value.attempts[0].message
+
+
+def test_default_registry_prefers_amap_mcp_when_url_configured() -> None:
+    registry = create_default_provider_registry(
+        env={
+            "AMAP_MCP_URL": "http://127.0.0.1:8899/mcp",
+            "AMAP_API_KEY": "rest-key",
+            "MAPBOX_ACCESS_TOKEN": "mapbox-token",
+        }
+    )
+
+    provider = registry._map_providers["amap"]  # noqa: SLF001
+
+    assert provider.__class__.__name__ == "AMapMCPMapProvider"
+
+
+def test_default_registry_uses_amap_rest_when_mcp_url_missing() -> None:
+    registry = create_default_provider_registry(
+        env={
+            "AMAP_API_KEY": "rest-key",
+            "MAPBOX_ACCESS_TOKEN": "mapbox-token",
+        }
+    )
+
+    provider = registry._map_providers["amap"]  # noqa: SLF001
+
+    assert provider.__class__.__name__ == "AMapMapProvider"
 
 
 async def test_registry_exposes_configured_non_map_providers() -> None:

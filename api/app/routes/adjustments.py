@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 
 from app.graph.adjustments import run_adjustment_workflow
+from app.llm.fixtures import fixture_mode_enabled
 from app.models.schemas import ConversationTurn
 from app.routes._shared import (
     AdjustmentInput,
@@ -32,6 +33,7 @@ async def submit_adjustment(
             session,
             message=body.message,
             type_c_action=body.type_c_action,
+            fixture_mode=fixture_mode_enabled(),
         )
         await repo.append_conversation_turn(
             session_id,

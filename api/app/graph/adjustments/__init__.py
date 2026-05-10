@@ -20,6 +20,7 @@ async def run_adjustment_workflow(
     *,
     message: str,
     type_c_action: TypeCAction | None = None,
+    fixture_mode: bool = False,
 ) -> AdjustmentGraphResult:
     classification = classify_adjustment(message)
 
@@ -31,9 +32,17 @@ async def run_adjustment_workflow(
         )
 
     if classification.type == "A":
-        return await run_type_a_adjustment(session, classification)
+        return await run_type_a_adjustment(
+            session,
+            classification,
+            fixture_mode=fixture_mode,
+        )
     if classification.type == "B":
-        return await run_type_b_adjustment(session, classification)
+        return await run_type_b_adjustment(
+            session,
+            classification,
+            fixture_mode=fixture_mode,
+        )
 
     return await run_type_c_adjustment(
         session,

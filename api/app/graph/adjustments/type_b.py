@@ -16,6 +16,8 @@ QUIET_STAY_PATTERN = re.compile(r"安静|更静|清静|quiet|quieter|calm|calmer
 async def run_type_b_adjustment(
     session: PlanningSession,
     classification: AdjustmentRequest,
+    *,
+    fixture_mode: bool = False,
 ) -> AdjustmentGraphResult:
     working = session
 
@@ -36,6 +38,7 @@ async def run_type_b_adjustment(
     result = await run_planner_only_workflow(
         working,
         reason=f"type_b_{classification.target_scope}_adjustment",
+        fixture_mode=fixture_mode,
     )
     return AdjustmentGraphResult(
         session_id=result.session_id,

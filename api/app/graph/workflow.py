@@ -80,8 +80,16 @@ def create_planner_only_graph():
     return graph.compile()
 
 
-async def run_full_planning_workflow(session: PlanningSession) -> PlanningGraphResult:
-    initial = PlanState(session=session, mode="full_planning")
+async def run_full_planning_workflow(
+    session: PlanningSession,
+    *,
+    fixture_mode: bool = False,
+) -> PlanningGraphResult:
+    initial = PlanState(
+        session=session,
+        mode="full_planning",
+        fixture_mode=fixture_mode,
+    )
     graph = create_planning_graph()
     final = await graph.ainvoke(graph_input_from_state(initial))
     return _planning_result(final)
@@ -91,6 +99,7 @@ async def run_planner_only_workflow(
     session: PlanningSession,
     *,
     reason: str,
+    fixture_mode: bool = False,
 ) -> PlanningGraphResult:
     if session.stay_recommendation is None or session.transport_recommendation is None:
         raise ValueError("planner-only workflow requires existing stay and transport")
@@ -98,6 +107,7 @@ async def run_planner_only_workflow(
     initial = PlanState(
         session=session,
         mode="planner_only",
+        fixture_mode=fixture_mode,
         planner_only_reason=reason,
         stay_recommendation=session.stay_recommendation,
         transport_recommendation=session.transport_recommendation,

@@ -11,6 +11,8 @@ from app.graph.nodes.discovery import (
     run_discovery_node,
 )
 from app.graph.nodes.planner import (
+    _route_fits_gap,
+    _route_segment,
     active_stay_option,
     run_planner_agent,
     run_planner_node,
@@ -23,10 +25,17 @@ from app.models.schemas import (
     BudgetBand,
     Coordinate,
     DiscoveryOutput,
+    NormalizedRoute,
     NormalizedPlace,
     SourceNote,
 )
-from app.providers.types import ProviderError, PlaceSearchRequest, SearchRequest, SearchResult
+from app.providers.types import (
+    ProviderError,
+    PlaceSearchRequest,
+    RouteRequest,
+    SearchRequest,
+    SearchResult,
+)
 from tests.graph import fixtures
 
 
@@ -76,6 +85,39 @@ class FakeMapRegistry:
         if self.fail:
             raise RuntimeError("map search failed")
         return self.places_by_query.get(request.query, [])
+
+
+class FakeRouteRegistry:
+    def __init__(
+        self,
+        duration_minutes: float = 18,
+        distance_meters: float = 1400,
+    ) -> None:
+        self.duration_minutes = duration_minutes
+        self.distance_meters = distance_meters
+        self.requests: list[tuple[str, RouteRequest]] = []
+
+    async def route(self, country_code: str, request: RouteRequest) -> NormalizedRoute:
+        self.requests.append((country_code, request))
+        return NormalizedRoute(
+            from_=request.from_,
+            to=request.to,
+            mode=request.mode,
+            duration_minutes=self.duration_minutes,
+            distance_meters=self.distance_meters,
+            cost_estimate=None,
+            provider="amap",
+        )
+
+
+class FailingRouteRegistry:
+    async def route(self, country_code: str, request: RouteRequest) -> NormalizedRoute:
+        raise ConnectionError("route unavailable")
+
+
+class BuggyRouteRegistry:
+    async def route(self, country_code: str, request: RouteRequest) -> NormalizedRoute:
+        raise TypeError("bad fake")
 
 
 def search_result(title: str, url: str, snippet: str) -> SearchResult:
@@ -612,6 +654,114 @@ async def test_run_planner_agent_builds_required_segment_types() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_planner_agent_does_not_use_default_registry_without_opt_in(
+    monkeypatch,
+) -> None:
+    def fail_default_registry():
+        raise AssertionError("default route registry should not be created")
+
+    monkeypatch.setenv("AMAP_MCP_URL", "https://example.test/mcp")
+    monkeypatch.setattr(
+        "app.graph.nodes.planner.create_default_provider_registry",
+        fail_default_registry,
+    )
+
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+    )
+
+    assert all(
+        segment.type != "transit"
+        for day in itinerary.days
+        for segment in day.segments
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_adds_route_transit_segments_when_registry_available() -> None:
+    registry = FakeRouteRegistry()
+
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+        map_registry=registry,
+    )
+
+    transit_segments = [
+        segment
+        for day in itinerary.days
+        for segment in day.segments
+        if segment.type == "transit"
+    ]
+    assert transit_segments
+    assert transit_segments[0].description == "Estimated walk: 18 min, 1.4 km."
+    assert registry.requests[0][0] == "CN"
+    assert registry.requests[0][1].mode == "walk"
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_skips_route_transit_when_duration_exceeds_gap() -> None:
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+        map_registry=FakeRouteRegistry(duration_minutes=45),
+    )
+
+    assert all(
+        segment.type != "transit"
+        for day in itinerary.days
+        for segment in day.segments
+    )
+
+
+def test_route_gap_fit_accounts_for_minimum_rendered_duration() -> None:
+    route = NormalizedRoute(
+        from_=fixtures.place("origin"),
+        to=fixtures.place("destination"),
+        mode="walk",
+        duration_minutes=4,
+        distance_meters=200,
+        cost_estimate=None,
+        provider="amap",
+    )
+
+    assert _route_fits_gap(route, "09:30", "09:34") is False
+    assert _route_fits_gap(route, "09:30", "09:35") is True
+    assert _route_segment("09:30", route).end_time == "09:35"
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_keeps_itinerary_when_route_enrichment_fails() -> None:
+    itinerary = await run_planner_agent(
+        fixtures.session(),
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+        map_registry=FailingRouteRegistry(),
+    )
+
+    assert all(
+        segment.type != "transit"
+        for day in itinerary.days
+        for segment in day.segments
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_does_not_swallow_programmer_errors() -> None:
+    with pytest.raises(TypeError, match="bad fake"):
+        await run_planner_agent(
+            fixtures.session(),
+            fixtures.stay_recommendation(),
+            fixtures.transport_recommendation(),
+            map_registry=BuggyRouteRegistry(),
+        )
+
+
+@pytest.mark.asyncio
 async def test_run_planner_agent_adds_corrective_note_for_validator_context() -> None:
     itinerary = await run_planner_agent(
         fixtures.session(),
@@ -636,6 +786,34 @@ async def test_run_planner_node_returns_patch_and_progress() -> None:
     assert patch["itinerary"]
     assert patch["progress_events"][-1]["node"] == "planner"
     assert patch["progress_events"][-1]["payload"]["version"] == patch["itinerary"]["version"]
+
+
+@pytest.mark.asyncio
+async def test_run_planner_node_fixture_mode_does_not_use_default_registry(
+    monkeypatch,
+) -> None:
+    def fail_default_registry():
+        raise AssertionError("default route registry should not be created")
+
+    monkeypatch.setenv("AMAP_MCP_URL", "https://example.test/mcp")
+    monkeypatch.setattr(
+        "app.graph.nodes.planner.create_default_provider_registry",
+        fail_default_registry,
+    )
+    state = PlanState(
+        session=fixtures.session(),
+        fixture_mode=True,
+        stay_recommendation=fixtures.stay_recommendation(),
+        transport_recommendation=fixtures.transport_recommendation(),
+    )
+
+    patch = await run_planner_node(state)
+
+    assert all(
+        segment["type"] != "transit"
+        for day in patch["itinerary"]["days"]
+        for segment in day["segments"]
+    )
 
 
 @pytest.mark.asyncio

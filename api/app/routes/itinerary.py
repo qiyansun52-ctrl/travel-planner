@@ -16,6 +16,7 @@ from app.graph.workflow import (
     run_full_planning_workflow,
     run_planner_only_workflow,
 )
+from app.llm.fixtures import fixture_mode_enabled
 from app.models.schemas import PlanningSession, ValidatorIssue
 from app.routes._shared import (
     ItineraryRequest,
@@ -43,10 +44,16 @@ def _assert_itinerary_ready(session: PlanningSession) -> None:
 async def _run_planning(
     session: PlanningSession,
     reason: str | None,
+    *,
+    fixture_mode: bool = False,
 ) -> PlanningGraphResult:
     if reason and session.stay_recommendation and session.transport_recommendation:
-        return await run_planner_only_workflow(session, reason=reason)
-    return await run_full_planning_workflow(session)
+        return await run_planner_only_workflow(
+            session,
+            reason=reason,
+            fixture_mode=fixture_mode,
+        )
+    return await run_full_planning_workflow(session, fixture_mode=fixture_mode)
 
 
 @router.post("/itinerary", response_model=PlanningSession)
@@ -55,7 +62,11 @@ async def run_itinerary(session_id: str, body: ItineraryRequest) -> PlanningSess
     session = await require_session(session_id, repo)
     _assert_itinerary_ready(session)
     try:
-        result = await _run_planning(session, body.planner_only_reason)
+        result = await _run_planning(
+            session,
+            body.planner_only_reason,
+            fixture_mode=fixture_mode_enabled(),
+        )
         updated = await persist_planning_result(repo, session_id, result)
     except Exception as exc:
         raise route_error(exc) from exc
@@ -76,7 +87,11 @@ async def update_stay_override(
     repo = repository()
     try:
         with_override = await repo.update_stay_override(session_id, body.stay_option_id)
-        result = await run_planner_only_workflow(with_override, reason="stay_override")
+        result = await run_planner_only_workflow(
+            with_override,
+            reason="stay_override",
+            fixture_mode=fixture_mode_enabled(),
+        )
         updated = await persist_planning_result(repo, session_id, result)
     except Exception as exc:
         raise route_error(exc) from exc
@@ -115,7 +130,10 @@ async def _stream_itinerary_events(session_id: str) -> AsyncIterator[str]:
         )
 
         result: PlanningGraphResult | None = None
-        async for item in _stream_planning_values(session):
+        async for item in _stream_planning_values(
+            session,
+            fixture_mode=fixture_mode_enabled(),
+        ):
             if isinstance(item, str):
                 yield item
             else:
@@ -140,12 +158,20 @@ async def _stream_itinerary_events(session_id: str) -> AsyncIterator[str]:
 
 async def _stream_planning_values(
     session: PlanningSession,
+    *,
+    fixture_mode: bool = False,
 ) -> AsyncIterator[str | PlanningGraphResult]:
     graph = create_planning_graph()
     seen_progress = 0
     last_state = None
     async for value in graph.astream(
-        graph_input_from_state(PlanState(session=session, mode="full_planning")),
+        graph_input_from_state(
+            PlanState(
+                session=session,
+                mode="full_planning",
+                fixture_mode=fixture_mode,
+            )
+        ),
         stream_mode="values",
     ):
         parsed = validate_graph_state(value)

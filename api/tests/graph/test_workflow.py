@@ -6,6 +6,7 @@ import pytest
 
 from app.graph import workflow
 from app.graph.nodes.discovery import run_discovery_node
+from app.graph.nodes import planner as planner_node
 from app.graph.state import PlanState, graph_input_from_state, validate_graph_state
 from tests.graph import fixtures
 
@@ -25,6 +26,32 @@ async def test_full_workflow_happy_path_finalizes_without_corrective_pass() -> N
         "planner",
         "validator",
     ]
+
+
+@pytest.mark.asyncio
+async def test_full_workflow_fixture_mode_does_not_create_default_map_registry(
+    monkeypatch,
+) -> None:
+    def fail_default_registry():
+        raise AssertionError("default map registry should not be created")
+
+    monkeypatch.setenv("AMAP_MCP_URL", "https://example.test/mcp")
+    monkeypatch.setattr(
+        planner_node,
+        "create_default_provider_registry",
+        fail_default_registry,
+    )
+
+    result = await workflow.run_full_planning_workflow(
+        fixtures.session(),
+        fixture_mode=True,
+    )
+
+    assert all(
+        segment.type != "transit"
+        for day in result.itinerary.days
+        for segment in day.segments
+    )
 
 
 @pytest.mark.asyncio

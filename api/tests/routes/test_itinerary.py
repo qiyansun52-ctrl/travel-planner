@@ -42,6 +42,30 @@ async def test_itinerary_route_runs_graph_persists_result_and_logs_metrics(
     assert "itinerary_finalized" in names
 
 
+async def test_itinerary_route_fixture_mode_does_not_create_default_map_registry(
+    client: httpx.AsyncClient,
+    monkeypatch,
+) -> None:
+    def fail_default_registry():
+        raise AssertionError("default map registry should not be created")
+
+    monkeypatch.setenv("AMAP_MCP_URL", "https://example.test/mcp")
+    monkeypatch.setattr(
+        "app.graph.nodes.planner.create_default_provider_registry",
+        fail_default_registry,
+    )
+    session_id = await prepared_session(client)
+
+    response = await client.post(f"/api/sessions/{session_id}/itinerary", json={})
+
+    assert response.status_code == 200
+    assert all(
+        segment["type"] != "transit"
+        for day in response.json()["itinerary"]["days"]
+        for segment in day["segments"]
+    )
+
+
 async def test_itinerary_route_requires_discovery_and_preferences(
     client: httpx.AsyncClient,
 ) -> None:

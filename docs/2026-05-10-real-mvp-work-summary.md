@@ -15,10 +15,11 @@
 - Plan15 已把 AMap/Mapbox provider registry 接入 discovery card place enrichment；本机地图 key 为空时会自动跳过并保留 LLM place。
 - Plan16 已新增最近行程恢复入口：首页会列出最近 active sessions，并可继续回 discovery/preferences/trips。
 - Plan17 已完成 Mapbox 真实 smoke 和 place quality gate：Mapbox 路线可用，但中国 POI 搜索会返回城市级结果，系统现在会拒绝这种低质量匹配，避免假坐标污染 discovery cards。
+- Plan18 已加入受控 AMap MCP provider 路径和 planner route enrichment：非 fixture 模式下可通过 provider registry 获取真实路线时长，并在不重叠后续行程的前提下插入 transit 段；地图失败时保留原 deterministic itinerary。
 
 当前分支：`feature/mvp-web-app`
 
-当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程；Plan16 已补上最近行程恢复入口；Plan17 已补上地图结果质量门槛，并通过完整 regression。
+当前状态：真实 provider 稳定性修复已提交；Plan14/Plan15 已把 Tavily grounding 和地图 place enrichment 接入 discovery 主流程；Plan16 已补上最近行程恢复入口；Plan17 已补上地图结果质量门槛；Plan18 已完成 AMap MCP 路线 enrichment 的受控接入，等待/执行最终 regression 后提交。
 
 ## 今天你完成了什么
 
@@ -79,6 +80,27 @@ Plan15 已把 `TravelDataProviderRegistry.search_places()` 接进 discovery agen
 - 地图 provider 缺 key、失败或无结果时，不阻断 discovery，会保留 LLM place 并继续。
 - 本机当前 `MAPBOX_ACCESS_TOKEN` 已配置；真实 route smoke 已通过，固定上海坐标可返回非零步行/驾车路线。
 - Mapbox 对中国 POI 的搜索会把东方明珠、外滩等查询退回到城市级 `Shanghai`。Plan17 已增加 discovery 侧的质量门槛：最多取 3 个候选，只接受有坐标且名称/地址能匹配 card name 的候选，否则保留原 card place。
+
+### 3.6 接入 AMap MCP 路线 enrichment
+
+Plan18 已新增 `AMapMCPMapProvider`，在 `AMAP_MCP_URL` 配置存在时优先使用 AMap MCP 路径；没有 MCP URL 时继续保留原 AMap REST provider 行为。
+
+planner 现在可以在 provider registry 可用时补充城市内移动时间：
+
+- `run_planner_agent()` 默认不触发真实地图调用，便于单元测试和直接调用保持确定性。
+- `run_planner_node()` 只在非 fixture mode 下 opt-in 默认 map registry。
+- API itinerary、stream itinerary、stay override 和 adjustment 路径都会把 `E2E_FIXTURE_MODE` 传入 graph，避免配置了真实地图 key 后污染 fixture 测试。
+- route enrichment 只在前后地点都有坐标、provider 成功、且路线时长能放进现有时间 gap 时插入 `transit` segment。
+- provider/route 错误会降级为“保留原 itinerary”，但 TypeError 等程序错误会继续暴露，避免隐藏 bug。
+
+新增真实 smoke：
+
+```bash
+cd api
+uv run python scripts/smoke_amap_mcp.py
+```
+
+需要先启动 AMap MCP server 并设置 `AMAP_MCP_URL`。脚本会验证 health、POI search 和步行 route，不打印 key 或 MCP URL。
 
 ### 4. 修掉真实模式暴露的问题
 
@@ -161,6 +183,7 @@ Plan16 新增了本地持久化的恢复入口：
 
 - Tavily search provider：adapter 已真实跑通，key 可用；Plan14 已把 Tavily grounding 接入 discovery 主流程。
 - Map place enrichment：Plan15 已接入 discovery 主流程；有 AMap/Mapbox key 时会用 provider registry 为 discovery cards 解析真实 `NormalizedPlace`，失败时保留 LLM place 并继续。Plan17 已加入质量门槛，避免 Mapbox 中国 POI 覆盖不足时把景点误补成城市中心点。
+- Route enrichment：Plan18 已接入 planner；有 AMap MCP/AMap REST/Mapbox 地图配置且处于非 fixture mode 时，会通过 provider registry 查询路线并插入不重叠的 `transit` 段。
 - Recent trips / resume：Plan16 已新增 `GET /api/sessions` 和首页最近行程入口，用户可以回到首页继续最近的本地行程。
 
 ### 还没有产品化
@@ -205,6 +228,7 @@ Plan16 新增了本地持久化的恢复入口：
 - Stay recommendation node。
 - Transport recommendation node。
 - Planner node。
+- Planner route enrichment via map provider registry。
 - Validator node。
 - Adjustment classifier。
 - Type A itinerary adjustment。

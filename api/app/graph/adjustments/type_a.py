@@ -10,8 +10,14 @@ from app.models.schemas import AdjustmentRequest, PlanningSession
 async def run_type_a_adjustment(
     session: PlanningSession,
     classification: AdjustmentRequest,
+    *,
+    fixture_mode: bool = False,
 ) -> AdjustmentGraphResult:
-    result = await run_planner_only_workflow(session, reason="type_a_adjustment")
+    result = await run_planner_only_workflow(
+        session,
+        reason="type_a_adjustment",
+        fixture_mode=fixture_mode,
+    )
     return AdjustmentGraphResult(
         session_id=result.session_id,
         classification=classification,

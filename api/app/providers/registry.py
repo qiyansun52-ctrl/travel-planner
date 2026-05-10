@@ -13,6 +13,7 @@ from pydantic import TypeAdapter, ValidationError
 from app.domain.geography import is_china_destination
 from app.models.schemas import NormalizedPlace, NormalizedRoute
 from app.providers.map.amap import AMapMapProvider
+from app.providers.map.amap_mcp import AMapMCPMapProvider
 from app.providers.map.mapbox import MapboxMapProvider
 from app.providers.search.tavily import TavilySearchProvider
 from app.providers.supplier import create_unavailable_supplier_provider
@@ -140,7 +141,12 @@ class TravelDataProviderRegistry:
                     operation,
                 )
                 return validate(raw)
-            except Exception as exc:
+            except (
+                ConnectionError,
+                ProviderError,
+                TimeoutError,
+                ValidationError,
+            ) as exc:
                 attempts.append(to_attempt_failure(provider.name, "map", operation, exc))
 
         raise ProviderRegistryError(operation, attempts)
@@ -180,7 +186,12 @@ class TravelDataProviderRegistry:
                 "map",
                 f"{operation}:health",
             )
-        except Exception as exc:
+        except (
+            ConnectionError,
+            ProviderError,
+            TimeoutError,
+            ValidationError,
+        ) as exc:
             failure = to_attempt_failure(
                 provider.name,
                 "map",
@@ -250,7 +261,7 @@ def create_default_provider_registry(
     source = env if env is not None else os.environ
     return create_provider_registry(
         map_providers={
-            "amap": AMapMapProvider(api_key=source.get("AMAP_API_KEY")),
+            "amap": _create_default_amap_provider(source),
             "mapbox": MapboxMapProvider(
                 access_token=source.get("MAPBOX_ACCESS_TOKEN")
             ),
@@ -259,6 +270,13 @@ def create_default_provider_registry(
         weather_provider=create_unavailable_weather_provider(),
         supplier_provider=create_unavailable_supplier_provider(),
     )
+
+
+def _create_default_amap_provider(source: Mapping[str, str]) -> MapProvider:
+    mcp_url = source.get("AMAP_MCP_URL")
+    if mcp_url:
+        return AMapMCPMapProvider(mcp_url=mcp_url)
+    return AMapMapProvider(api_key=source.get("AMAP_API_KEY"))
 
 
 def get_map_provider_order(country_code: str) -> list[MapProviderId]:
