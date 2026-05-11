@@ -20,14 +20,15 @@ export default function TripPage() {
     async function load() {
       try {
         const current = await getSession(sessionId)
+        if (!active) return
+        setSession(current)
+
         if (current.itinerary) {
-          if (active) setSession(current)
           return
         }
-        if (active) {
-          setPlanning(true)
-          setProgressEvents([])
-        }
+
+        setPlanning(true)
+        setProgressEvents([])
         const planned = await streamItinerary(sessionId, {
           onProgress: (event) => {
             if (active) setProgressEvents((events) => [...events, event])
