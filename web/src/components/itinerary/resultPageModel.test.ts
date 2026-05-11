@@ -282,6 +282,12 @@ describe("result page model helpers", () => {
     expect(budgetFitStatus(session).status).toBe("Within range")
   })
 
+  it("returns budget pending without an itinerary budget even when discovery has an estimate", () => {
+    const session = sessionFixture({ itinerary: null })
+
+    expect(budgetFitStatus(session).status).toBe("Budget pending")
+  })
+
   it("builds narrative route cards from itinerary days", () => {
     const items = narrativeRouteItems(sessionFixture())
     expect(items[0]).toMatchObject({
@@ -294,6 +300,27 @@ describe("result page model helpers", () => {
   it("suggests smart adjustment prompts from session state", () => {
     const prompts = smartAdjustmentPrompts(sessionFixture())
     expect(prompts).toContain("Review 1 itinerary warning")
+    expect(prompts).toContain("Confirm route details for segments without mapped places")
+  })
+
+  it("keeps route confirmation visible when prompt categories exceed the cap", () => {
+    const session = sessionFixture()
+    session.stay_recommendation!.alternatives = [
+      {
+        ...session.stay_recommendation!.primary,
+        id: "stay_alt",
+      },
+    ]
+    session.itinerary!.budget = {
+      ...session.itinerary!.budget,
+      overrun_flag: true,
+    }
+
+    const prompts = smartAdjustmentPrompts(session)
+
+    expect(prompts).toHaveLength(3)
+    expect(prompts).toContain("Compare stay area alternatives")
+    expect(prompts).toContain("Review budget and reduce higher-cost blocks")
     expect(prompts).toContain("Confirm route details for segments without mapped places")
   })
 })

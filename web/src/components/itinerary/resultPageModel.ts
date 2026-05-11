@@ -235,6 +235,10 @@ export function smartAdjustmentPrompts(session: PlanningSession): string[] {
     prompts.push("Review budget and reduce higher-cost blocks")
   }
 
+  if (routeStatus(session.itinerary).tone === "warning") {
+    prompts.push("Confirm route details for segments without mapped places")
+  }
+
   const issues = session.itinerary?.validator_issues ?? []
   const errorCount = issues.filter((issue) => issue.severity === "error").length
   const warningCount = issues.filter((issue) => issue.severity === "warning").length
@@ -243,10 +247,6 @@ export function smartAdjustmentPrompts(session: PlanningSession): string[] {
     prompts.push(`Review ${issueCount} itinerary ${issueCount === 1 ? "issue" : "issues"}`)
   } else if (warningCount > 0) {
     prompts.push(`Review ${warningCount} itinerary ${warningCount === 1 ? "warning" : "warnings"}`)
-  }
-
-  if (routeStatus(session.itinerary).tone === "warning") {
-    prompts.push("Confirm route details for segments without mapped places")
   }
 
   return prompts.slice(0, 3)
