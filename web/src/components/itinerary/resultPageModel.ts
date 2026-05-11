@@ -193,7 +193,7 @@ export function riskStatus(itinerary: Itinerary | null): ResultMetric {
       pluralize(errorCount, "issue", "to fix"),
       "danger",
       `${errorCount} validation ${errorCount === 1 ? "error needs" : "errors need"} attention.`,
-      `${errorCount} errors`,
+      `${errorCount} error${errorCount === 1 ? "" : "s"}`,
     )
   }
 
