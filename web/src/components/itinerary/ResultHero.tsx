@@ -27,7 +27,8 @@ export function ResultHero({ session }: ResultHeroProps) {
       aria-labelledby="result-hero-title"
       className="relative isolate overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white"
     >
-      {images.length > 0 ? <HeroImageLayer images={images} /> : <HeroFallbackTexture />}
+      <HeroFallbackTexture />
+      {images.length > 0 && <HeroImageLayer images={images} />}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/45" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/90 to-transparent" />
 
