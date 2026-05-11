@@ -54,22 +54,21 @@ export default function TripPage() {
   if (error) return <Centered message={error} />
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-950">
-      <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[1fr_360px]">
-        <section className="space-y-5">
-          <PlanningProgress active={planning || !session?.itinerary} events={progressEvents} />
-          {session?.itinerary ? (
-            <ItineraryView session={session} onStayOverride={handleStayOverride} />
-          ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
-              Generating final itinerary...
-            </div>
-          )}
-        </section>
-        {session && (
-          <aside className="lg:sticky lg:top-6 lg:self-start">
-            <AdjustmentPanel session={session} onSessionChange={setSession} />
-          </aside>
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
+        <PlanningProgress active={planning || !session?.itinerary} events={progressEvents} />
+        {session?.itinerary ? (
+          <ItineraryView
+            session={session}
+            onStayOverride={handleStayOverride}
+            adjustmentPanel={
+              <AdjustmentPanel session={session} onSessionChange={setSession} />
+            }
+          />
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
+            Generating final itinerary...
+          </div>
         )}
       </div>
     </main>
