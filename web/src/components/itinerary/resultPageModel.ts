@@ -84,7 +84,7 @@ export function activeStayOption(session: PlanningSession): StayOption | null {
 
 export function budgetFitStatus(session: PlanningSession): ResultMetric {
   const budget = session.itinerary?.budget ?? null
-  const userBudget = budget?.user_budget ?? 0
+  const userBudget = budget ? budget.user_budget || session.hard_constraints.total_budget : 0
 
   if (!userBudget || userBudget <= 0 || !budget) {
     return metric("Budget fit", "Budget pending", "neutral", "Generate an itinerary to confirm total trip cost.", "Pending")

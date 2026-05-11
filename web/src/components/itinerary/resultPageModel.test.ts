@@ -271,6 +271,17 @@ describe("result page model helpers", () => {
     expect(riskStatus(session.itinerary).status).toBe("1 warning to review")
   })
 
+  it("falls back to hard constraint budget when itinerary user budget is missing", () => {
+    const session = sessionFixture()
+    session.itinerary!.budget = {
+      ...session.itinerary!.budget,
+      user_budget: 0,
+      total: band(3650, 5500),
+    }
+
+    expect(budgetFitStatus(session).status).toBe("Within range")
+  })
+
   it("builds narrative route cards from itinerary days", () => {
     const items = narrativeRouteItems(sessionFixture())
     expect(items[0]).toMatchObject({
