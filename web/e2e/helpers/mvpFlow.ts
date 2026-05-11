@@ -37,10 +37,12 @@ export async function submitPreferences(page: Page) {
   await page.getByRole("button", { name: "Generate itinerary" }).click()
 
   await expect(page).toHaveURL(/\/trips\/session_/, { timeout: FLOW_EXPECT_TIMEOUT })
-  await expect(page.getByRole("heading", { name: /Your .* itinerary/ })).toBeVisible({
+  await expect(page.getByText("Destination story", { exact: true })).toBeVisible({
     timeout: FLOW_EXPECT_TIMEOUT,
   })
-  await expect(page.getByText("Final budget")).toBeVisible()
+  await expect(page.getByText("Budget fit", { exact: true })).toBeVisible()
+  await expect(page.getByText("Narrative route", { exact: true })).toBeVisible()
+  await expect(page.locator("section").filter({ hasText: "Day-by-day execution" }).first()).toBeVisible()
 }
 
 export async function completeFixtureTrip(page: Page, totalBudget = "6000") {
