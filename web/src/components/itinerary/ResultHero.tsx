@@ -30,11 +30,16 @@ export function ResultHero({ session }: ResultHeroProps) {
       {images.length > 0 ? <HeroImageLayer images={images} /> : <HeroFallbackTexture />}
       <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/45" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950/90 to-transparent" />
+      {images.length === 0 && (
+        <p className="absolute right-4 top-4 rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-100 shadow-sm backdrop-blur">
+          Route texture
+        </p>
+      )}
 
       <div className="relative grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:p-8">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-100">
-            Result brief
+            Destination story
           </p>
           <h1
             id="result-hero-title"

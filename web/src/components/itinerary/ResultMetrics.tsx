@@ -54,7 +54,7 @@ export function ResultMetrics({ metrics }: ResultMetricsProps) {
         Trip decision metrics
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.slice(0, 4).map((metric) => {
+        {metrics.map((metric) => {
           const styles = toneStyles[metric.tone]
 
           return (
