@@ -42,7 +42,9 @@ export async function submitPreferences(page: Page) {
   })
   await expect(page.getByText("Budget fit", { exact: true })).toBeVisible()
   await expect(page.getByText("Narrative route", { exact: true })).toBeVisible()
-  await expect(page.locator("section").filter({ hasText: "Day-by-day execution" }).first()).toBeVisible()
+  const detailedItinerary = page.getByRole("region", { name: "Detailed itinerary" })
+  await expect(detailedItinerary).toBeVisible()
+  await expect(detailedItinerary.getByText("Day-by-day execution", { exact: true })).toBeVisible()
 }
 
 export async function completeFixtureTrip(page: Page, totalBudget = "6000") {
