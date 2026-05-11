@@ -69,11 +69,15 @@ export default function TripPage() {
         ) : session ? (
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
-              Generating final itinerary...
+              {canAdjust(session)
+                ? "The itinerary is being refreshed. You can still adjust the trip from the side panel."
+                : "Generating final itinerary..."}
             </div>
-            <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-              <AdjustmentPanel session={session} onSessionChange={setSession} />
-            </aside>
+            {canAdjust(session) && (
+              <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+                <AdjustmentPanel session={session} onSessionChange={setSession} />
+              </aside>
+            )}
           </div>
         ) : (
           <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
@@ -83,6 +87,10 @@ export default function TripPage() {
       </div>
     </main>
   )
+}
+
+function canAdjust(session: PlanningSession): boolean {
+  return Boolean(session.stay_recommendation && session.transport_recommendation)
 }
 
 function Centered({ message }: { message: string }) {
