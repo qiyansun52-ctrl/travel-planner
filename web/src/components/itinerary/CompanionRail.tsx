@@ -141,14 +141,17 @@ function summarizeRoutePlaces(session: PlanningSession): { mapped: number; total
 
   for (const day of session.itinerary?.days ?? []) {
     for (const segment of day.segments) {
-      if (!ROUTE_PLACE_SEGMENT_TYPES.has(segment.type) || !segment.place) {
+      if (!ROUTE_PLACE_SEGMENT_TYPES.has(segment.type)) {
         continue
       }
 
-      const key = routePlaceKey(segment.place)
+      const key = segment.place
+        ? routePlaceKey(segment.place)
+        : routeSegmentKey(day.day_index, segment)
+
       totalKeys.add(key)
 
-      if (segment.place.coordinate) {
+      if (segment.place?.coordinate) {
         mappedKeys.add(key)
       }
     }
@@ -170,6 +173,17 @@ function routePlaceKey(place: NormalizedPlace): string {
   }
 
   return `name:${place.name}`
+}
+
+function routeSegmentKey(dayIndex: number, segment: ItinerarySegment): string {
+  return [
+    "segment",
+    dayIndex,
+    segment.type,
+    segment.start_time,
+    segment.end_time,
+    segment.card_ref ?? "no-card",
+  ].join(":")
 }
 
 function formatBudget(currency: string, value: number): string {
