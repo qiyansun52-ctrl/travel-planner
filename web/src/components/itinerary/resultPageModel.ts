@@ -17,6 +17,8 @@ export interface ResultMetric {
   label: string
   status: string
   tone: "good" | "warning" | "danger" | "neutral"
+  detail: string
+  value: string
 }
 
 export interface NarrativeRouteItem {
@@ -81,39 +83,74 @@ export function activeStayOption(session: PlanningSession): StayOption | null {
 }
 
 export function budgetFitStatus(session: PlanningSession): ResultMetric {
-  const budget = session.itinerary?.budget ?? session.discovery_state?.payload?.budget_estimate ?? null
-  const userBudget = budget?.user_budget ?? session.hard_constraints.total_budget
+  const budget = session.itinerary?.budget ?? null
+  const userBudget = budget?.user_budget ?? 0
 
   if (!userBudget || userBudget <= 0 || !budget) {
-    return { label: "Budget fit", status: "Budget pending", tone: "neutral" }
+    return metric("Budget fit", "Budget pending", "neutral", "Generate an itinerary to confirm total trip cost.", "Pending")
   }
 
   if (budget.overrun_flag || budget.total.high > userBudget) {
-    return { label: "Budget fit", status: "Over budget", tone: "danger" }
+    return metric(
+      "Budget fit",
+      "Over budget",
+      "danger",
+      `Planned total ${formatBand(budget.total)} vs ${budget.currency} ${formatAmount(userBudget)} budget.`,
+      formatBand(budget.total),
+    )
   }
 
-  return { label: "Budget fit", status: "Within range", tone: "good" }
+  return metric(
+    "Budget fit",
+    "Within range",
+    "good",
+    `Planned total ${formatBand(budget.total)} stays within the trip budget.`,
+    formatBand(budget.total),
+  )
 }
 
 export function paceStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return { label: "Pace", status: "Pace pending", tone: "neutral" }
+    return metric("Pace", "Pace pending", "neutral", "Generate an itinerary to review daily pacing.", "Pending")
   }
 
   if (itinerary.days.some((day) => day.segments.length >= 6)) {
-    return { label: "Pace", status: "Packed days", tone: "warning" }
+    const packedDays = itinerary.days.filter((day) => day.segments.length >= 6).length
+    return metric(
+      "Pace",
+      "Packed days",
+      "warning",
+      `${packedDays} ${packedDays === 1 ? "day has" : "days have"} six or more scheduled blocks.`,
+      `${packedDays} packed`,
+    )
   }
 
   if (itinerary.days.some((day) => day.segments.some((segment) => segment.type === "rest"))) {
-    return { label: "Pace", status: "Balanced pace", tone: "good" }
+    const restBlocks = itinerary.days.reduce(
+      (count, day) => count + day.segments.filter((segment) => segment.type === "rest").length,
+      0,
+    )
+    return metric(
+      "Pace",
+      "Balanced pace",
+      "good",
+      `${restBlocks} flexible rest ${restBlocks === 1 ? "block is" : "blocks are"} scheduled.`,
+      `${restBlocks} rest`,
+    )
   }
 
-  return { label: "Pace", status: "Steady pace", tone: "neutral" }
+  return metric(
+    "Pace",
+    "Steady pace",
+    "neutral",
+    `${itinerary.days.length} ${itinerary.days.length === 1 ? "day" : "days"} scheduled without rest blocks.`,
+    `${itinerary.days.length} days`,
+  )
 }
 
 export function routeStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return { label: "Route", status: "Route pending", tone: "neutral" }
+    return metric("Route", "Route pending", "neutral", "Generate an itinerary to confirm mapped places.", "Pending")
   }
 
   const placeSegments = itinerary.days.flatMap((day) =>
@@ -121,33 +158,57 @@ export function routeStatus(itinerary: Itinerary | null): ResultMetric {
   )
 
   if (placeSegments.length === 0) {
-    return { label: "Route", status: "Route light", tone: "neutral" }
+    return metric("Route", "Route light", "neutral", "No place-based segments need mapping yet.", "0 stops")
   }
 
-  const mappedCount = placeSegments.filter((segment) => segment.place).length
+  const mappedCount = placeSegments.filter((segment) => segment.place?.coordinate).length
   if (mappedCount < placeSegments.length) {
-    return { label: "Route", status: "Some routes need confirmation", tone: "warning" }
+    return metric(
+      "Route",
+      "Some routes need confirmation",
+      "warning",
+      `${placeSegments.length - mappedCount} of ${placeSegments.length} place segments need mapped coordinates.`,
+      `${mappedCount}/${placeSegments.length}`,
+    )
   }
 
-  return { label: "Route", status: "Mapped route", tone: "good" }
+  return metric(
+    "Route",
+    "Mapped route",
+    "good",
+    `All ${placeSegments.length} place segments include mapped coordinates.`,
+    `${mappedCount}/${placeSegments.length}`,
+  )
 }
 
 export function riskStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return { label: "Risks", status: "Risks pending", tone: "neutral" }
+    return metric("Risks", "Risks pending", "neutral", "Generate an itinerary to run validation checks.", "Pending")
   }
 
   const errorCount = itinerary.validator_issues.filter((issue) => issue.severity === "error").length
   if (errorCount > 0) {
-    return { label: "Risks", status: pluralize(errorCount, "issue", "to fix"), tone: "danger" }
+    return metric(
+      "Risks",
+      pluralize(errorCount, "issue", "to fix"),
+      "danger",
+      `${errorCount} validation ${errorCount === 1 ? "error needs" : "errors need"} attention.`,
+      `${errorCount} errors`,
+    )
   }
 
   const warningCount = itinerary.validator_issues.filter((issue) => issue.severity === "warning").length
   if (warningCount > 0) {
-    return { label: "Risks", status: pluralize(warningCount, "warning", "to review"), tone: "warning" }
+    return metric(
+      "Risks",
+      pluralize(warningCount, "warning", "to review"),
+      "warning",
+      `${warningCount} validation ${warningCount === 1 ? "warning needs" : "warnings need"} review.`,
+      `${warningCount} warnings`,
+    )
   }
 
-  return { label: "Risks", status: "No issues flagged", tone: "good" }
+  return metric("Risks", "No issues flagged", "good", "Validation found no itinerary issues.", "0 issues")
 }
 
 export function narrativeRouteItems(session: PlanningSession): NarrativeRouteItem[] {
@@ -174,8 +235,13 @@ export function smartAdjustmentPrompts(session: PlanningSession): string[] {
     prompts.push("Review budget and reduce higher-cost blocks")
   }
 
-  const warningCount = session.itinerary?.validator_issues.filter((issue) => issue.severity === "warning").length ?? 0
-  if (warningCount > 0) {
+  const issues = session.itinerary?.validator_issues ?? []
+  const errorCount = issues.filter((issue) => issue.severity === "error").length
+  const warningCount = issues.filter((issue) => issue.severity === "warning").length
+  const issueCount = issues.length
+  if (errorCount > 0) {
+    prompts.push(`Review ${issueCount} itinerary ${issueCount === 1 ? "issue" : "issues"}`)
+  } else if (warningCount > 0) {
     prompts.push(`Review ${warningCount} itinerary ${warningCount === 1 ? "warning" : "warnings"}`)
   }
 
@@ -297,4 +363,14 @@ function formatAmount(value: number): string {
 
 function pluralize(count: number, singular: string, suffix: string): string {
   return `${count} ${singular}${count === 1 ? "" : "s"} ${suffix}`
+}
+
+function metric(
+  label: string,
+  status: string,
+  tone: ResultMetric["tone"],
+  detail: string,
+  value: string,
+): ResultMetric {
+  return { label, status, tone, detail, value }
 }
