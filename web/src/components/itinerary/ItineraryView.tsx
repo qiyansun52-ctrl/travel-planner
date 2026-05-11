@@ -79,7 +79,7 @@ export function ItineraryView({
         </div>
 
         <div className="min-w-0 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-          <div className="xl:sticky xl:top-6">
+          <div className="xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-1">
             <CompanionRail session={session} adjustmentPanel={adjustmentPanel} />
           </div>
         </div>
