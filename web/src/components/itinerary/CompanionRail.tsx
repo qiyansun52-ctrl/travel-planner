@@ -1,9 +1,15 @@
 import type { ReactNode } from "react"
-import type { PlanningSession } from "@/lib/types"
+import type { ItinerarySegment, NormalizedPlace, PlanningSession } from "@/lib/types"
 import {
   activeStayOption,
   smartAdjustmentPrompts,
 } from "./resultPageModel"
+
+const ROUTE_PLACE_SEGMENT_TYPES = new Set<ItinerarySegment["type"]>([
+  "attraction",
+  "hotel_checkin",
+  "hotel_return",
+])
 
 interface CompanionRailProps {
   session: PlanningSession
@@ -13,22 +19,27 @@ interface CompanionRailProps {
 export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) {
   const stay = activeStayOption(session)
   const prompts = smartAdjustmentPrompts(session)
-  const mappedPlaces = countMappedPlaces(session)
-  const totalPlaces = countPlaceSegments(session)
+  const routePlaces = summarizeRoutePlaces(session)
   const constraints = session.hard_constraints
 
   return (
     <aside className="space-y-4">
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
+      <section
+        aria-labelledby="companion-rail-spatial-brief"
+        className="rounded-lg border border-slate-200 bg-white p-4"
+      >
+        <h2
+          id="companion-rail-spatial-brief"
+          className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+        >
           Spatial brief
-        </p>
+        </h2>
         <div className="mt-4 space-y-3">
           <BriefRow
             label="Mapped places"
             value={
-              totalPlaces > 0
-                ? `${mappedPlaces} of ${totalPlaces} with coordinates`
+              routePlaces.total > 0
+                ? `${routePlaces.mapped} of ${routePlaces.total} with coordinates`
                 : "No mapped places yet"
             }
           />
@@ -49,10 +60,16 @@ export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) 
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
+      <section
+        aria-labelledby="companion-rail-companion-brief"
+        className="rounded-lg border border-slate-200 bg-white p-4"
+      >
+        <h2
+          id="companion-rail-companion-brief"
+          className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+        >
           Companion brief
-        </p>
+        </h2>
         <div className="mt-4 space-y-3">
           <BriefRow label="Destination" value={constraints.destination_city} />
           <BriefRow
@@ -70,10 +87,16 @@ export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) 
       </section>
 
       {prompts.length > 0 && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
+        <section
+          aria-labelledby="companion-rail-smart-adjustments"
+          className="rounded-lg border border-slate-200 bg-white p-4"
+        >
+          <h2
+            id="companion-rail-smart-adjustments"
+            className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+          >
             Smart adjustments
-          </p>
+          </h2>
           <ul className="mt-4 space-y-2">
             {prompts.map((prompt) => (
               <li
@@ -112,23 +135,41 @@ function BriefRow({
   )
 }
 
-function countMappedPlaces(session: PlanningSession): number {
-  return (
-    session.itinerary?.days.reduce(
-      (count, day) =>
-        count + day.segments.filter((segment) => Boolean(segment.place?.coordinate)).length,
-      0,
-    ) ?? 0
-  )
+function summarizeRoutePlaces(session: PlanningSession): { mapped: number; total: number } {
+  const totalKeys = new Set<string>()
+  const mappedKeys = new Set<string>()
+
+  for (const day of session.itinerary?.days ?? []) {
+    for (const segment of day.segments) {
+      if (!ROUTE_PLACE_SEGMENT_TYPES.has(segment.type) || !segment.place) {
+        continue
+      }
+
+      const key = routePlaceKey(segment.place)
+      totalKeys.add(key)
+
+      if (segment.place.coordinate) {
+        mappedKeys.add(key)
+      }
+    }
+  }
+
+  return {
+    mapped: mappedKeys.size,
+    total: totalKeys.size,
+  }
 }
 
-function countPlaceSegments(session: PlanningSession): number {
-  return (
-    session.itinerary?.days.reduce(
-      (count, day) => count + day.segments.filter((segment) => Boolean(segment.place)).length,
-      0,
-    ) ?? 0
-  )
+function routePlaceKey(place: NormalizedPlace): string {
+  if (place.id) {
+    return `id:${place.id}`
+  }
+
+  if (place.coordinate) {
+    return `coordinate:${place.coordinate.lat},${place.coordinate.lng}`
+  }
+
+  return `name:${place.name}`
 }
 
 function formatBudget(currency: string, value: number): string {

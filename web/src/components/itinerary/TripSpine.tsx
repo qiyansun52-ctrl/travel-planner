@@ -39,16 +39,14 @@ export function TripSpine({ session }: TripSpineProps) {
           </h2>
         </div>
 
-        {transportSummary && (
-          <div className="min-w-0 border-t border-slate-200 pt-3 lg:max-w-sm lg:border-t-0 lg:pt-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Transport
-            </p>
-            <p className="mt-1 break-words text-sm font-medium leading-5 text-slate-800">
-              {transportSummary}
-            </p>
-          </div>
-        )}
+        <div className="min-w-0 border-t border-slate-200 pt-3 lg:max-w-sm lg:border-t-0 lg:pt-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Transport
+          </p>
+          <p className="mt-1 break-words text-sm font-medium leading-5 text-slate-800">
+            {transportSummary}
+          </p>
+        </div>
       </div>
 
       <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -90,10 +88,10 @@ export function TripSpine({ session }: TripSpineProps) {
   )
 }
 
-function formatTransportSummary(session: PlanningSession): string | null {
+function formatTransportSummary(session: PlanningSession): string {
   const transport = session.transport_recommendation
   if (!transport) {
-    return null
+    return "Transport pending"
   }
 
   const arrivalMode = formatMode(transport.arrival.mode)
