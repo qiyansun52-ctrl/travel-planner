@@ -7,7 +7,6 @@
 ![status](https://img.shields.io/badge/status-prototype-orange)
 ![stack](https://img.shields.io/badge/AI-Claude%20%2B%20MCP-5A4AE3)
 ![template](https://img.shields.io/badge/output-HTML%20%2F%20printable-blue)
-![license](https://img.shields.io/badge/license-TBD-lightgrey)
 
 ---
 
@@ -152,4 +151,4 @@ travel-planner/
 
 ## License
 
-Not yet licensed — TBD. / 暂未授权。
+Personal project. Please open an issue if you want to reuse the code or template. / 个人项目，复用前请先开 issue 讨论。
