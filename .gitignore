@@ -2,10 +2,27 @@
 .env
 .env.*
 
+# Local nested checkouts
+TripStar/
+
+# Runtime data
+.data/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
 node_modules/
 .next/
 dist/
 build/
+*.tsbuildinfo
+next-env.d.ts
+playwright-report/
+test-results/
 
 .worktrees/
 web/.env.local
