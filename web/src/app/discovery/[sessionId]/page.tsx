@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { DiscoveryBoard } from "@/components/discovery/DiscoveryBoard"
+import { DiscoveryCardGrid } from "@/components/discovery/DiscoveryCardGrid"
 import { getSession, runDiscovery, updateSelectedCards } from "@/lib/apiClient"
 import type { PlanningSession } from "@/lib/types"
 
@@ -47,7 +48,28 @@ export default function DiscoveryPage() {
   }, [sessionId])
 
   if (error) return <Centered message={error} />
-  if (!session?.discovery_state?.payload) return <Centered message="正在整理发现卡片..." />
+  if (!session?.discovery_state?.payload) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-950">
+        <div className="mx-auto w-full max-w-7xl space-y-8">
+          <div>
+            <p className="text-sm font-semibold uppercase text-teal-700">
+              正在整理
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-slate-950">
+              发现卡片生成中
+            </h1>
+          </div>
+          <DiscoveryCardGrid
+            cards={[]}
+            selectedIds={[]}
+            onToggle={() => undefined}
+            loading
+          />
+        </div>
+      </main>
+    )
+  }
 
   return (
     <DiscoveryBoard

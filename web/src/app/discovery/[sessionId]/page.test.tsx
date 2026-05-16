@@ -66,4 +66,13 @@ describe("DiscoveryPage", () => {
     expect(await screen.findByText("Discovery ready: The Bund")).toBeInTheDocument()
     await waitFor(() => expect(api.runDiscovery).toHaveBeenCalledTimes(1))
   })
+
+  it("renders discovery card skeletons while loading", () => {
+    api.getSession.mockReturnValue(new Promise(() => undefined))
+
+    const { container } = render(<DiscoveryPage />)
+
+    expect(screen.queryByText("正在整理发现卡片...")).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[data-testid="discovery-card-skeleton"]')).toHaveLength(6)
+  })
 })
