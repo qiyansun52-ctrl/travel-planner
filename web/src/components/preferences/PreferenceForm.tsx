@@ -64,11 +64,35 @@ export function PreferenceForm({ onSubmit }: PreferenceFormProps) {
         <option value="flexible">都可以</option>
       </Select>
 
-      <Select label="城际交通" value={transport} onChange={setTransport}>
-        <option value="rail">高铁/火车优先</option>
-        <option value="flight">飞机优先</option>
-        <option value="flexible">都可以</option>
-      </Select>
+      <fieldset className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+        <legend className="mb-1">城际交通</legend>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: "rail", label: "高铁/火车", icon: "🚄" },
+            { value: "flight", label: "飞机优先", icon: "✈️" },
+            { value: "flexible", label: "都可以", icon: "🔀" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() =>
+                setTransport(option.value as Preference["intercity_transport_preference"])
+              }
+              className={`
+                flex flex-col items-center gap-1.5 rounded-xl border p-3 text-sm font-medium transition-colors
+                ${
+                  transport === option.value
+                    ? "border-teal-500 bg-teal-50 text-teal-800 shadow-[0_0_0_2px_theme(colors.teal.500)]"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }
+              `}
+            >
+              <span className="text-xl">{option.icon}</span>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <Select label="早出发接受度" value={earlyDeparture} onChange={setEarlyDeparture}>
         <option value="low">尽量不要太早</option>

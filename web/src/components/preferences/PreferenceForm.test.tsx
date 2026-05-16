@@ -13,9 +13,7 @@ describe("PreferenceForm", () => {
     fireEvent.change(screen.getByLabelText(/住宿类型/i), {
       target: { value: "homestay" },
     })
-    fireEvent.change(screen.getByLabelText(/城际交通/i), {
-      target: { value: "flight" },
-    })
+    fireEvent.click(screen.getByRole("button", { name: /飞机优先/i }))
     fireEvent.click(screen.getByLabelText(/愿意多花一点钱来节省时间/i))
     fireEvent.click(screen.getByRole("button", { name: /生成完整行程/i }))
 
