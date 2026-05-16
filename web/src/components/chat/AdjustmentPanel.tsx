@@ -156,6 +156,7 @@ export function AdjustmentPanel({ session, onSessionChange }: AdjustmentPanelPro
               }
             }}
             placeholder="描述你想调整的内容…"
+            aria-label="调整需求"
             rows={2}
             disabled={sending}
             className="

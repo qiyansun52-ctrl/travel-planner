@@ -4,8 +4,8 @@ import { completeFixtureTrip } from "./helpers/mvpFlow"
 test("updates stay area after a Type B adjustment", async ({ page }) => {
   await completeFixtureTrip(page)
 
-  await page.getByLabel("调整需求").fill("酒店换到更安静的区域")
-  await page.getByRole("button", { name: "发送调整" }).click()
+  await page.getByPlaceholder("描述你想调整的内容…").fill("酒店换到更安静的区域")
+  await page.getByRole("button", { name: "发送" }).click()
 
   await expect(page.getByText(/Itinerary updated/)).toBeVisible()
   const stayAreaSwitcher = page
