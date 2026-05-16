@@ -1,3 +1,7 @@
+> **STATUS: PARTIAL (2026-05-09)**
+> 产品流程章节仍然有效;架构章节中的 Next.js server agents 已改为 Python + LangGraph。
+> 当前唯一 active 计划见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # Single-City Travel Planning MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

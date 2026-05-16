@@ -1,3 +1,7 @@
+> **STATUS: SUPERSEDED (2026-05-09)**
+> 本设计文档对应早期单体 Next.js + 双面板聊天形态,已不再代表当前产品。
+> 当前产品形态见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # 旅行规划 Web App 设计文档
 
 **日期**: 2026-04-30  

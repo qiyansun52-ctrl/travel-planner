@@ -23,6 +23,8 @@ build/
 next-env.d.ts
 playwright-report/
 test-results/
+!api/dist/
+!api/dist/schema.json
 
 .worktrees/
 web/.env.local

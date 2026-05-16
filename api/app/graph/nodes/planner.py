@@ -1,0 +1,469 @@
+"""Deterministic planner graph node."""
+
+from __future__ import annotations
+
+import math
+import os
+from datetime import date, timedelta
+
+from app.domain.budget import sum_budget_bands, to_per_trip_band
+from app.graph.agent_contracts import agent_progress_payload, itinerary_quality_report
+from app.graph.nodes.discovery import band, budget_summary
+from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
+from app.models.schemas import (
+    DiscoveryCard,
+    Itinerary,
+    ItineraryDay,
+    ItinerarySegment,
+    NormalizedRoute,
+    NormalizedPlace,
+    PlanningSession,
+    StayOption,
+    StayRecommendation,
+    TransportRecommendation,
+    ValidatorIssue,
+)
+from app.providers.registry import (
+    ProviderRegistryError,
+    TravelDataProviderRegistry,
+    create_default_provider_registry,
+)
+from app.providers.types import ProviderError, RouteRequest
+
+
+async def run_planner_agent(
+    session: PlanningSession,
+    stay: StayRecommendation,
+    transport: TransportRecommendation,
+    validator_issues: list[ValidatorIssue] | None = None,
+    *,
+    map_registry: TravelDataProviderRegistry | None = None,
+    use_default_map_registry: bool = False,
+) -> Itinerary:
+    cards = _selected_cards(session)
+    active_stay = active_stay_option(stay)
+    days = _build_days(session, cards, active_stay, validator_issues)
+    days = await _enrich_days_with_routes(
+        days,
+        session,
+        active_stay,
+        map_registry,
+        use_default_map_registry=use_default_map_registry,
+    )
+    currency = session.hard_constraints.currency
+    room_count = max(1, math.ceil(session.hard_constraints.traveler_count / 2))
+    transport_band = sum_budget_bands(
+        currency,
+        [
+            to_per_trip_band(
+                transport.arrival.cost_band,
+                traveler_count=session.hard_constraints.traveler_count,
+                duration_days=session.hard_constraints.duration_days,
+                room_count=room_count,
+            ),
+            to_per_trip_band(
+                transport.departure.cost_band,
+                traveler_count=session.hard_constraints.traveler_count,
+                duration_days=session.hard_constraints.duration_days,
+                room_count=room_count,
+            ),
+        ],
+    )
+    stay_band = to_per_trip_band(
+        active_stay.price_band,
+        traveler_count=session.hard_constraints.traveler_count,
+        duration_days=session.hard_constraints.duration_days,
+        room_count=room_count,
+    )
+    version = (session.itinerary.version if session.itinerary else 0) + 1
+
+    return Itinerary(
+        id=session.itinerary.id if session.itinerary else "itinerary_mvp",
+        session_id=session.session_id,
+        days=days,
+        budget=budget_summary(
+            currency,
+            session.hard_constraints.total_budget,
+            transport=transport_band,
+            stay=stay_band,
+            food=band(currency, 600, 1100, "per_trip"),
+            attractions=band(currency, 200, 700, "per_trip"),
+            other=band(currency, 150, 400, "per_trip", "low"),
+        ),
+        validator_issues=[],
+        version=version,
+    )
+
+
+def active_stay_option(stay: StayRecommendation) -> StayOption:
+    options = [stay.primary, *stay.alternatives]
+    return next(
+        (option for option in options if option.id == stay.user_override_id),
+        stay.primary,
+    )
+
+
+async def run_planner_node(state: PlanState) -> GraphState:
+    parsed = validate_graph_state(state)
+    stay = parsed.stay_recommendation or parsed.session.stay_recommendation
+    transport = (
+        parsed.transport_recommendation or parsed.session.transport_recommendation
+    )
+    if stay is None:
+        raise ValueError("run_planner_node requires stay_recommendation")
+    if transport is None:
+        raise ValueError("run_planner_node requires transport_recommendation")
+
+    itinerary = await run_planner_agent(
+        parsed.session,
+        stay,
+        transport,
+        parsed.validator_issues,
+        use_default_map_registry=not parsed.fixture_mode,
+    )
+    updated = append_progress(
+        parsed.model_copy(update={"itinerary": itinerary}),
+        "planner",
+        "completed",
+        agent_progress_payload(
+            "planner",
+            version=itinerary.version,
+            quality=itinerary_quality_report(
+                itinerary,
+                expected_day_count=parsed.session.hard_constraints.duration_days,
+            ),
+        ),
+    )
+    new_event = updated.progress_events[-1]
+    return GraphState(
+        itinerary=itinerary.model_dump(mode="json"),
+        progress_events=[new_event.model_dump(mode="json")],
+    )
+
+
+def _selected_cards(session: PlanningSession) -> list[DiscoveryCard]:
+    payload = session.discovery_state.payload if session.discovery_state else None
+    if payload is None:
+        return []
+    ids = set(session.discovery_state.selected_card_ids)
+    selected = [card for card in payload.cards if card.id in ids]
+    return selected if selected else payload.cards[:3]
+
+
+def _build_days(
+    session: PlanningSession,
+    selected: list[DiscoveryCard],
+    stay: StayOption,
+    validator_issues: list[ValidatorIssue] | None,
+) -> list[ItineraryDay]:
+    days: list[ItineraryDay] = []
+    duration = session.hard_constraints.duration_days
+    relaxed = len(selected) <= duration
+    cursor = 0
+
+    for day_index in range(1, duration + 1):
+        first = _card_at(selected, cursor)
+        second = _card_at(selected, cursor + 1)
+        cursor += 1 if relaxed else 2
+        segments = [
+            _hotel_segment("09:00", "09:30", stay, "Start from the active stay area.")
+        ]
+        if first:
+            segments.append(
+                _card_segment(first, "10:00", "12:00" if relaxed else "11:45")
+            )
+        segments.append(
+            ItinerarySegment(
+                type="food",
+                start_time="12:15",
+                end_time="13:30",
+                place=None,
+                card_ref=None,
+                description=(
+                    "Keep lunch flexible near the morning area instead of locking a "
+                    "specific restaurant."
+                ),
+                cost_estimate=band(
+                    session.hard_constraints.currency, 80, 180, "per_party"
+                ),
+            )
+        )
+        if second and not relaxed:
+            segments.append(_card_segment(second, "14:00", "16:00"))
+        else:
+            segments.append(
+                ItinerarySegment(
+                    type="rest",
+                    start_time="14:00",
+                    end_time="16:00",
+                    place=None,
+                    card_ref=None,
+                    description="Flexible rest or low-confidence optional discovery slot.",
+                    cost_estimate=None,
+                )
+            )
+        segments.append(
+            ItinerarySegment(
+                type="hotel_return",
+                start_time="18:00",
+                end_time="18:30",
+                place=None,
+                card_ref=None,
+                description="Return before dinner so the evening can stay light.",
+                cost_estimate=band(
+                    session.hard_constraints.currency, 20, 80, "per_party"
+                ),
+            )
+        )
+        note = (
+            "Few selections detected, so the plan preserves flexible time."
+            if relaxed
+            else "Dense selections were prioritized by route and fit."
+        )
+        notes = [note]
+        if validator_issues:
+            notes.append("Corrective pass used validator errors as planning context.")
+        notes.extend(_reservation_notes([first, second if not relaxed else None]))
+        days.append(
+            ItineraryDay(
+                day_index=day_index,
+                date=_add_days(session.hard_constraints.departure_date, day_index - 1),
+                segments=segments,
+                notes=notes,
+            )
+        )
+
+    return days
+
+
+def _reservation_notes(cards: list[DiscoveryCard | None]) -> list[str]:
+    notes: list[str] = []
+    seen: set[str] = set()
+    for card in cards:
+        if card is None or card.id in seen or not card.reservation_hint:
+            continue
+        seen.add(card.id)
+        notes.append(f"Reservation check: {card.name} - {card.reservation_hint}")
+    return notes
+
+
+def _card_at(cards: list[DiscoveryCard], index: int) -> DiscoveryCard | None:
+    if not cards:
+        return None
+    return cards[index % len(cards)]
+
+
+def _hotel_segment(
+    start_time: str,
+    end_time: str,
+    stay: StayOption,
+    description: str,
+) -> ItinerarySegment:
+    return ItinerarySegment(
+        type="hotel_checkin",
+        start_time=start_time,
+        end_time=end_time,
+        place=NormalizedPlace(
+            id=stay.area.id,
+            name=stay.area.name,
+            coordinate=stay.area.center,
+            address=stay.area.name,
+            category="stay_area",
+            provider="mapbox",
+        ),
+        card_ref=None,
+        description=description,
+        cost_estimate=None,
+    )
+
+
+def _card_segment(
+    card: DiscoveryCard, start_time: str, end_time: str
+) -> ItinerarySegment:
+    return ItinerarySegment(
+        type="attraction",
+        start_time=start_time,
+        end_time=end_time,
+        place=card.place,
+        card_ref=card.id,
+        description=card.reason,
+        cost_estimate=card.cost_estimate,
+    )
+
+
+async def _enrich_days_with_routes(
+    days: list[ItineraryDay],
+    session: PlanningSession,
+    stay: StayOption,
+    map_registry: TravelDataProviderRegistry | None,
+    *,
+    use_default_map_registry: bool,
+) -> list[ItineraryDay]:
+    registry = map_registry
+    if registry is None and use_default_map_registry:
+        registry = _default_map_registry()
+    if registry is None:
+        return days
+
+    enriched_days: list[ItineraryDay] = []
+    country_code = session.hard_constraints.destination_country_code
+    for day in days:
+        segments: list[ItinerarySegment] = []
+        previous_place_segment: ItinerarySegment | None = None
+        previous_route_place: NormalizedPlace | None = None
+
+        for segment in day.segments:
+            route_place = _route_place_for_segment(segment, stay)
+            if route_place is None:
+                segments.append(segment)
+                previous_place_segment = None
+                previous_route_place = None
+                continue
+
+            if previous_place_segment is not None and previous_route_place is not None:
+                route = await _safe_route_between(
+                    registry,
+                    country_code,
+                    previous_route_place,
+                    route_place,
+                )
+                if route is not None and _route_fits_gap(
+                    route,
+                    previous_place_segment.end_time,
+                    segment.start_time,
+                ):
+                    segments.append(
+                        _route_segment(previous_place_segment.end_time, route)
+                    )
+
+            segments.append(segment)
+            previous_place_segment = segment
+            previous_route_place = route_place
+
+        enriched_days.append(day.model_copy(update={"segments": segments}))
+
+    return enriched_days
+
+
+def _route_place_for_segment(
+    segment: ItinerarySegment,
+    stay: StayOption,
+) -> NormalizedPlace | None:
+    if segment.place is None:
+        return None
+    if segment.type == "hotel_checkin" and stay.sample_hotels:
+        return stay.sample_hotels[0].place
+    return segment.place
+
+
+async def _safe_route_between(
+    registry: TravelDataProviderRegistry,
+    country_code: str,
+    from_place: NormalizedPlace,
+    to_place: NormalizedPlace,
+) -> NormalizedRoute | None:
+    if from_place.coordinate is None or to_place.coordinate is None:
+        return None
+
+    mode = (
+        "walk"
+        if _straight_line_distance_meters(from_place, to_place) <= 1800
+        else "drive"
+    )
+    try:
+        return await registry.route(
+            country_code,
+            RouteRequest(from_=from_place, to=to_place, mode=mode),
+        )
+    except (
+        ProviderRegistryError,
+        ProviderError,
+        TimeoutError,
+        ConnectionError,
+        ValueError,
+    ):
+        return None
+
+
+def _route_fits_gap(
+    route: NormalizedRoute, start_time: str, next_start_time: str
+) -> bool:
+    gap_minutes = _minutes_between(start_time, next_start_time)
+    if gap_minutes <= 0:
+        return False
+    return _route_duration_minutes(route) <= gap_minutes
+
+
+def _route_segment(start_time: str, route: NormalizedRoute) -> ItinerarySegment:
+    duration_minutes = _route_duration_minutes(route)
+    distance_km = route.distance_meters / 1000
+    return ItinerarySegment(
+        type="transit",
+        start_time=start_time,
+        end_time=_add_minutes(start_time, duration_minutes),
+        place=None,
+        card_ref=None,
+        description=(
+            f"Estimated {route.mode}: {duration_minutes} min, {distance_km:.1f} km."
+        ),
+        cost_estimate=None,
+    )
+
+
+def _route_duration_minutes(route: NormalizedRoute) -> int:
+    return max(5, int(round(route.duration_minutes)))
+
+
+def _straight_line_distance_meters(
+    from_place: NormalizedPlace,
+    to_place: NormalizedPlace,
+) -> float:
+    from_coordinate = from_place.coordinate
+    to_coordinate = to_place.coordinate
+    if from_coordinate is None or to_coordinate is None:
+        return math.inf
+
+    radius_meters = 6_371_000
+    from_lat = math.radians(from_coordinate.lat)
+    to_lat = math.radians(to_coordinate.lat)
+    delta_lat = math.radians(to_coordinate.lat - from_coordinate.lat)
+    delta_lng = math.radians(to_coordinate.lng - from_coordinate.lng)
+    haversine = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(from_lat) * math.cos(to_lat) * math.sin(delta_lng / 2) ** 2
+    )
+    return (
+        radius_meters * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+    )
+
+
+def _default_map_registry() -> TravelDataProviderRegistry | None:
+    if not (
+        os.environ.get("AMAP_MCP_URL")
+        or os.environ.get("AMAP_API_KEY")
+        or os.environ.get("MAPBOX_ACCESS_TOKEN")
+    ):
+        return None
+    return create_default_provider_registry()
+
+
+def _add_minutes(value: str, minutes: int) -> str:
+    hours, current_minutes = _time_parts(value)
+    total_minutes = min(23 * 60 + 59, hours * 60 + current_minutes + minutes)
+    return f"{total_minutes // 60:02d}:{total_minutes % 60:02d}"
+
+
+def _minutes_between(start_time: str, end_time: str) -> int:
+    start_hours, start_minutes = _time_parts(start_time)
+    end_hours, end_minutes = _time_parts(end_time)
+    return (end_hours * 60 + end_minutes) - (start_hours * 60 + start_minutes)
+
+
+def _time_parts(value: str) -> tuple[int, int]:
+    hours, minutes = (int(part) for part in value.split(":", maxsplit=1))
+    return hours, minutes
+
+
+def _add_days(value: str, offset: int) -> str:
+    parsed = date.fromisoformat(value)
+    return (parsed + timedelta(days=offset)).isoformat()

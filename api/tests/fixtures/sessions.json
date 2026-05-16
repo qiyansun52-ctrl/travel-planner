@@ -1,0 +1,792 @@
+{
+  "session_29b9ddb9-98cc-4dd4-abfa-6a76d2f54237": {
+    "session_id": "session_29b9ddb9-98cc-4dd4-abfa-6a76d2f54237",
+    "hard_constraints": {
+      "departure_city": "北京",
+      "destination_city": "上海",
+      "destination_country_code": "CN",
+      "departure_date": "2026-05-10",
+      "duration_days": 3,
+      "traveler_count": 2,
+      "total_budget": 6000,
+      "currency": "CNY"
+    },
+    "discovery_state": {
+      "payload": {
+        "cards": [
+          {
+            "id": "disc_waterfront",
+            "name": "上海 waterfront walk",
+            "reason": "A flexible first stop that gives the city shape before the schedule gets dense.",
+            "category": "landmark",
+            "tags": [
+              "orientation",
+              "low pressure"
+            ],
+            "suggested_duration_minutes": 120,
+            "cost_signal": "free",
+            "cost_estimate": {
+              "currency": "CNY",
+              "low": 0,
+              "high": 0,
+              "confidence": "high",
+              "basis": "per_person"
+            },
+            "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+            "reservation_hint": null,
+            "place": {
+              "id": "place_waterfront",
+              "name": "上海 waterfront",
+              "coordinate": {
+                "lat": 31.240000000000002,
+                "lng": 121.48
+              },
+              "address": "上海 waterfront",
+              "category": "poi",
+              "provider": "amap"
+            },
+            "enrichment_status": "complete"
+          },
+          {
+            "id": "disc_old_town",
+            "name": "上海 old town lanes",
+            "reason": "Good for browsing small shops, snacks, and architecture in one compact area.",
+            "category": "neighborhood",
+            "tags": [
+              "walkable",
+              "local texture"
+            ],
+            "suggested_duration_minutes": 150,
+            "cost_signal": "medium",
+            "cost_estimate": {
+              "currency": "CNY",
+              "low": 35,
+              "high": 80,
+              "confidence": "medium",
+              "basis": "per_person"
+            },
+            "image_url": null,
+            "reservation_hint": null,
+            "place": {
+              "id": "place_old-town",
+              "name": "上海 old town",
+              "coordinate": {
+                "lat": 31.238,
+                "lng": 121.478
+              },
+              "address": "上海 old town",
+              "category": "poi",
+              "provider": "amap"
+            },
+            "enrichment_status": "partial"
+          },
+          {
+            "id": "disc_museum",
+            "name": "上海 city museum",
+            "reason": "A weather-proof anchor that adds context without forcing a full-day commitment.",
+            "category": "museum",
+            "tags": [
+              "culture",
+              "indoor"
+            ],
+            "suggested_duration_minutes": 150,
+            "cost_signal": "medium",
+            "cost_estimate": {
+              "currency": "CNY",
+              "low": 35,
+              "high": 80,
+              "confidence": "medium",
+              "basis": "per_person"
+            },
+            "image_url": "https://images.unsplash.com/photo-1518998053901-5348d3961a04",
+            "reservation_hint": "Reserve a morning entry if weekend demand is high.",
+            "place": {
+              "id": "place_museum",
+              "name": "上海 city museum",
+              "coordinate": {
+                "lat": 31.236,
+                "lng": 121.476
+              },
+              "address": "上海 city museum",
+              "category": "poi",
+              "provider": "amap"
+            },
+            "enrichment_status": "complete"
+          },
+          {
+            "id": "disc_market",
+            "name": "上海 morning market",
+            "reason": "A compact food-and-people-watching stop that works before heavier sightseeing.",
+            "category": "market",
+            "tags": [
+              "food",
+              "morning"
+            ],
+            "suggested_duration_minutes": 90,
+            "cost_signal": "medium",
+            "cost_estimate": {
+              "currency": "CNY",
+              "low": 120,
+              "high": 240,
+              "confidence": "medium",
+              "basis": "per_party"
+            },
+            "image_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
+            "reservation_hint": null,
+            "place": {
+              "id": "place_market",
+              "name": "上海 morning market",
+              "coordinate": {
+                "lat": 31.236,
+                "lng": 121.476
+              },
+              "address": "上海 morning market",
+              "category": "poi",
+              "provider": "amap"
+            },
+            "enrichment_status": "complete"
+          },
+          {
+            "id": "disc_viewpoint",
+            "name": "上海 sunset viewpoint",
+            "reason": "A natural late-day slot that leaves daytime plans easier to rearrange.",
+            "category": "viewpoint",
+            "tags": [
+              "sunset",
+              "photo"
+            ],
+            "suggested_duration_minutes": 90,
+            "cost_signal": "high",
+            "cost_estimate": {
+              "currency": "CNY",
+              "low": 260,
+              "high": 520,
+              "confidence": "low",
+              "basis": "per_party"
+            },
+            "image_url": null,
+            "reservation_hint": null,
+            "place": {
+              "id": "place_viewpoint",
+              "name": "上海 sunset viewpoint",
+              "coordinate": {
+                "lat": 31.239,
+                "lng": 121.479
+              },
+              "address": "上海 sunset viewpoint",
+              "category": "poi",
+              "provider": "amap"
+            },
+            "enrichment_status": "partial"
+          },
+          {
+            "id": "disc_hidden_courtyard",
+            "name": "上海 hidden courtyard",
+            "reason": "A lower-confidence local texture idea kept as optional inspiration.",
+            "category": "experience",
+            "tags": [
+              "optional",
+              "quiet"
+            ],
+            "suggested_duration_minutes": 60,
+            "cost_signal": "unknown",
+            "cost_estimate": null,
+            "image_url": null,
+            "reservation_hint": null,
+            "place": null,
+            "enrichment_status": "minimal"
+          }
+        ],
+        "food_summaries": [
+          {
+            "id": "food_noodles",
+            "name": "上海 noodle shops",
+            "category": "casual",
+            "description": "Good lunch fallback around transit hubs and old neighborhoods.",
+            "image_url": null
+          },
+          {
+            "id": "food_modern",
+            "name": "上海 modern local bistros",
+            "category": "dinner",
+            "description": "Better for one planned dinner after the final walking-heavy day.",
+            "image_url": null
+          }
+        ],
+        "area_summaries": [
+          {
+            "id": "area_central",
+            "name": "上海 central core",
+            "vibe_tags": [
+              "walkable",
+              "transit-rich",
+              "busy"
+            ],
+            "note": "Best default for a first visit and low routing friction.",
+            "center": {
+              "lat": 31.23,
+              "lng": 121.47
+            }
+          },
+          {
+            "id": "area_quiet",
+            "name": "上海 quieter residential edge",
+            "vibe_tags": [
+              "calmer",
+              "local food",
+              "slower evenings"
+            ],
+            "note": "Better for lighter evenings, with slightly longer cross-city hops.",
+            "center": {
+              "lat": 31.21,
+              "lng": 121.43
+            }
+          }
+        ],
+        "budget_estimate": {
+          "currency": "CNY",
+          "transport": {
+            "currency": "CNY",
+            "low": 900,
+            "high": 1300,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "stay": {
+            "currency": "CNY",
+            "low": 1500,
+            "high": 2200,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "food": {
+            "currency": "CNY",
+            "low": 900,
+            "high": 1400,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "attractions": {
+            "currency": "CNY",
+            "low": 300,
+            "high": 700,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "other": {
+            "currency": "CNY",
+            "low": 200,
+            "high": 400,
+            "confidence": "low",
+            "basis": "per_trip"
+          },
+          "total": {
+            "currency": "CNY",
+            "low": 3800,
+            "high": 6000,
+            "confidence": "low",
+            "basis": "per_trip"
+          },
+          "user_budget": 6000,
+          "overrun_flag": false
+        },
+        "source_notes": [
+          {
+            "provider": "fixture",
+            "url": null,
+            "note": "Fixture-backed MVP discovery; live enrichment uses configured providers."
+          }
+        ]
+      },
+      "selected_card_ids": [
+        "disc_waterfront",
+        "disc_old_town",
+        "disc_museum"
+      ]
+    },
+    "preferences": {
+      "area_vibe": "central, walkable, good food nearby",
+      "quiet_vs_lively": "balanced",
+      "stay_type": "homestay",
+      "willing_to_change_hotels": false,
+      "intercity_transport_preference": "rail",
+      "early_departure_tolerance": "medium",
+      "transfer_tolerance": "medium",
+      "pay_more_to_save_time": false
+    },
+    "stay_recommendation": {
+      "primary": {
+        "id": "stay_primary",
+        "area": {
+          "id": "area_central",
+          "name": "上海 central core",
+          "vibe_tags": [
+            "walkable",
+            "transit-rich",
+            "busy"
+          ],
+          "note": "Best default for a first visit and low routing friction.",
+          "center": {
+            "lat": 31.23,
+            "lng": 121.47
+          }
+        },
+        "fit_reason": "Best balance of transit access and recovery time.",
+        "price_band": {
+          "currency": "CNY",
+          "low": 1200,
+          "high": 2200,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "sample_hotels": []
+      },
+      "alternatives": [
+        {
+          "id": "stay_alt_quiet",
+          "area": {
+            "id": "area_quiet",
+            "name": "上海 quieter residential edge",
+            "vibe_tags": [
+              "calmer",
+              "local food",
+              "slower evenings"
+            ],
+            "note": "Better for lighter evenings, with slightly longer cross-city hops.",
+            "center": {
+              "lat": 31.21,
+              "lng": 121.43
+            }
+          },
+          "fit_reason": "Better if quiet evenings matter more than transfer time.",
+          "price_band": {
+            "currency": "CNY",
+            "low": 1200,
+            "high": 2200,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "sample_hotels": []
+        },
+        {
+          "id": "stay_alt_value",
+          "area": {
+            "id": "area_central",
+            "name": "上海 central core",
+            "vibe_tags": [
+              "walkable",
+              "transit-rich",
+              "busy"
+            ],
+            "note": "Best default for a first visit and low routing friction.",
+            "center": {
+              "lat": 31.23,
+              "lng": 121.47
+            }
+          },
+          "fit_reason": "Value-first backup near the same transit spine.",
+          "price_band": {
+            "currency": "CNY",
+            "low": 1200,
+            "high": 2200,
+            "confidence": "medium",
+            "basis": "per_trip"
+          },
+          "sample_hotels": []
+        }
+      ],
+      "user_override_id": null
+    },
+    "transport_recommendation": {
+      "arrival": {
+        "mode": "rail",
+        "duration_minutes": 300,
+        "cost_band": {
+          "currency": "CNY",
+          "low": 500,
+          "high": 900,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "note": "Lower-friction rail arrival near the city core."
+      },
+      "departure": {
+        "mode": "rail",
+        "duration_minutes": 300,
+        "cost_band": {
+          "currency": "CNY",
+          "low": 500,
+          "high": 900,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "note": "Mirror the arrival mode unless live fares strongly disagree."
+      },
+      "intracity": {
+        "primary_mode": "mixed",
+        "daily_cost_band": {
+          "currency": "CNY",
+          "low": 40,
+          "high": 120,
+          "confidence": "medium",
+          "basis": "per_day"
+        },
+        "note": "Use transit for cross-city hops and taxi only for late returns."
+      },
+      "tradeoffs": [
+        "Rail keeps the trip simpler but can consume more door-to-door time."
+      ]
+    },
+    "itinerary": {
+      "id": "itinerary_L-kt50f4",
+      "session_id": "session_29b9ddb9-98cc-4dd4-abfa-6a76d2f54237",
+      "days": [
+        {
+          "day_index": 1,
+          "date": "2026-05-10",
+          "segments": [
+            {
+              "type": "hotel_checkin",
+              "start_time": "09:00",
+              "end_time": "09:30",
+              "place": {
+                "id": "area_central",
+                "name": "上海 central core",
+                "coordinate": {
+                  "lat": 31.23,
+                  "lng": 121.47
+                },
+                "address": "上海 central core",
+                "category": "stay_area",
+                "provider": "mapbox"
+              },
+              "card_ref": null,
+              "description": "Start from the active stay area.",
+              "cost_estimate": null
+            },
+            {
+              "type": "attraction",
+              "start_time": "10:00",
+              "end_time": "12:00",
+              "place": {
+                "id": "place_waterfront",
+                "name": "上海 waterfront",
+                "coordinate": {
+                  "lat": 31.240000000000002,
+                  "lng": 121.48
+                },
+                "address": "上海 waterfront",
+                "category": "poi",
+                "provider": "amap"
+              },
+              "card_ref": "disc_waterfront",
+              "description": "A flexible first stop that gives the city shape before the schedule gets dense.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 0,
+                "high": 0,
+                "confidence": "high",
+                "basis": "per_person"
+              }
+            },
+            {
+              "type": "food",
+              "start_time": "12:15",
+              "end_time": "13:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Keep lunch flexible near the morning area instead of locking a specific restaurant.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 80,
+                "high": 180,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            },
+            {
+              "type": "rest",
+              "start_time": "14:00",
+              "end_time": "16:00",
+              "place": null,
+              "card_ref": null,
+              "description": "Flexible rest or low-confidence optional discovery slot.",
+              "cost_estimate": null
+            },
+            {
+              "type": "hotel_return",
+              "start_time": "18:00",
+              "end_time": "18:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Return before dinner so the evening can stay light.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 20,
+                "high": 80,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            }
+          ],
+          "notes": [
+            "Few selections detected, so the plan preserves flexible time."
+          ]
+        },
+        {
+          "day_index": 2,
+          "date": "2026-05-11",
+          "segments": [
+            {
+              "type": "hotel_checkin",
+              "start_time": "09:00",
+              "end_time": "09:30",
+              "place": {
+                "id": "area_central",
+                "name": "上海 central core",
+                "coordinate": {
+                  "lat": 31.23,
+                  "lng": 121.47
+                },
+                "address": "上海 central core",
+                "category": "stay_area",
+                "provider": "mapbox"
+              },
+              "card_ref": null,
+              "description": "Start from the active stay area.",
+              "cost_estimate": null
+            },
+            {
+              "type": "attraction",
+              "start_time": "10:00",
+              "end_time": "12:00",
+              "place": {
+                "id": "place_old-town",
+                "name": "上海 old town",
+                "coordinate": {
+                  "lat": 31.238,
+                  "lng": 121.478
+                },
+                "address": "上海 old town",
+                "category": "poi",
+                "provider": "amap"
+              },
+              "card_ref": "disc_old_town",
+              "description": "Good for browsing small shops, snacks, and architecture in one compact area.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 35,
+                "high": 80,
+                "confidence": "medium",
+                "basis": "per_person"
+              }
+            },
+            {
+              "type": "food",
+              "start_time": "12:15",
+              "end_time": "13:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Keep lunch flexible near the morning area instead of locking a specific restaurant.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 80,
+                "high": 180,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            },
+            {
+              "type": "rest",
+              "start_time": "14:00",
+              "end_time": "16:00",
+              "place": null,
+              "card_ref": null,
+              "description": "Flexible rest or low-confidence optional discovery slot.",
+              "cost_estimate": null
+            },
+            {
+              "type": "hotel_return",
+              "start_time": "18:00",
+              "end_time": "18:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Return before dinner so the evening can stay light.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 20,
+                "high": 80,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            }
+          ],
+          "notes": [
+            "Few selections detected, so the plan preserves flexible time."
+          ]
+        },
+        {
+          "day_index": 3,
+          "date": "2026-05-12",
+          "segments": [
+            {
+              "type": "hotel_checkin",
+              "start_time": "09:00",
+              "end_time": "09:30",
+              "place": {
+                "id": "area_central",
+                "name": "上海 central core",
+                "coordinate": {
+                  "lat": 31.23,
+                  "lng": 121.47
+                },
+                "address": "上海 central core",
+                "category": "stay_area",
+                "provider": "mapbox"
+              },
+              "card_ref": null,
+              "description": "Start from the active stay area.",
+              "cost_estimate": null
+            },
+            {
+              "type": "attraction",
+              "start_time": "10:00",
+              "end_time": "12:00",
+              "place": {
+                "id": "place_museum",
+                "name": "上海 city museum",
+                "coordinate": {
+                  "lat": 31.236,
+                  "lng": 121.476
+                },
+                "address": "上海 city museum",
+                "category": "poi",
+                "provider": "amap"
+              },
+              "card_ref": "disc_museum",
+              "description": "A weather-proof anchor that adds context without forcing a full-day commitment.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 35,
+                "high": 80,
+                "confidence": "medium",
+                "basis": "per_person"
+              }
+            },
+            {
+              "type": "food",
+              "start_time": "12:15",
+              "end_time": "13:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Keep lunch flexible near the morning area instead of locking a specific restaurant.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 80,
+                "high": 180,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            },
+            {
+              "type": "rest",
+              "start_time": "14:00",
+              "end_time": "16:00",
+              "place": null,
+              "card_ref": null,
+              "description": "Flexible rest or low-confidence optional discovery slot.",
+              "cost_estimate": null
+            },
+            {
+              "type": "hotel_return",
+              "start_time": "18:00",
+              "end_time": "18:30",
+              "place": null,
+              "card_ref": null,
+              "description": "Return before dinner so the evening can stay light.",
+              "cost_estimate": {
+                "currency": "CNY",
+                "low": 20,
+                "high": 80,
+                "confidence": "medium",
+                "basis": "per_party"
+              }
+            }
+          ],
+          "notes": [
+            "Few selections detected, so the plan preserves flexible time."
+          ]
+        }
+      ],
+      "budget": {
+        "currency": "CNY",
+        "transport": {
+          "currency": "CNY",
+          "low": 1350,
+          "high": 1800,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "stay": {
+          "currency": "CNY",
+          "low": 1650,
+          "high": 2200,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "food": {
+          "currency": "CNY",
+          "low": 600,
+          "high": 1100,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "attractions": {
+          "currency": "CNY",
+          "low": 200,
+          "high": 700,
+          "confidence": "medium",
+          "basis": "per_trip"
+        },
+        "other": {
+          "currency": "CNY",
+          "low": 150,
+          "high": 400,
+          "confidence": "low",
+          "basis": "per_trip"
+        },
+        "total": {
+          "currency": "CNY",
+          "low": 3950,
+          "high": 6200,
+          "confidence": "low",
+          "basis": "per_trip"
+        },
+        "user_budget": 6000,
+        "overrun_flag": true
+      },
+      "validator_issues": [],
+      "version": 2
+    },
+    "conversation_history": [
+      {
+        "id": "turn_40134b15-8f07-4af7-b2ad-0767a73da290",
+        "raw_text": "把第二天下午改轻松一点",
+        "classification": {
+          "raw_text": "把第二天下午改轻松一点",
+          "type": "A",
+          "confidence": 0.78,
+          "target_scope": "day",
+          "proposed_change": "把第二天下午改轻松一点"
+        },
+        "created_at": "2026-05-09T06:50:42.933Z"
+      }
+    ],
+    "validator_issues": [],
+    "parent_session_id": null,
+    "snapshot_label": null,
+    "status": "active",
+    "created_at": "2026-05-09T06:50:39.119Z",
+    "updated_at": "2026-05-09T06:50:42.937Z"
+  }
+}

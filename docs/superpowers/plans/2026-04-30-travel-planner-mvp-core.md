@@ -1,3 +1,7 @@
+> **STATUS: SUPERSEDED (2026-05-09)**
+> 本计划对应早期单体 Next.js + 双面板聊天 MVP,已不再代表当前实施路线。
+> 当前唯一 active 计划见:`docs/superpowers/plans/2026-05-09-langgraph-single-city-mvp.md`
+
 # Travel Planner MVP Core — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

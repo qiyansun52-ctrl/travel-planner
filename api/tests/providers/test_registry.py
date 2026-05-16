@@ -1,0 +1,279 @@
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
+from typing import Awaitable, Callable
+
+import pytest
+
+from app.models.schemas import NormalizedPlace
+from app.providers.registry import (
+    ProviderRegistryError,
+    create_default_provider_registry,
+    create_provider_registry,
+    get_map_provider_order,
+)
+from app.providers.types import GeocodeRequest, ProviderHealth
+
+
+def _place(provider: str, name: str = "Shanghai") -> NormalizedPlace:
+    return NormalizedPlace(
+        id=f"{provider}:shanghai",
+        name=name,
+        coordinate={"lat": 31.2304, "lng": 121.4737},
+        address=name,
+        category="city",
+        provider=provider,
+    )
+
+
+@dataclass
+class FixtureMapProvider:
+    name: str
+    geocode_handler: Callable[[GeocodeRequest], Awaitable[object]]
+    ok: bool = True
+
+    async def health(self) -> ProviderHealth:
+        return ProviderHealth(ok=self.ok, reason=None if self.ok else "fixture unhealthy")
+
+    async def geocode(self, request: GeocodeRequest) -> object:
+        return await self.geocode_handler(request)
+
+    async def reverse_geocode(self, request):
+        return await self.geocode_handler(GeocodeRequest(query="reverse fixture"))
+
+    async def search_places(self, request):
+        return [await self.geocode_handler(GeocodeRequest(query="search fixture"))]
+
+    async def route(self, request):
+        raise RuntimeError("route fixture unused")
+
+
+def test_provider_order_uses_country_code_only() -> None:
+    assert get_map_provider_order("CN")[:2] == ["amap", "baidu"]
+    assert get_map_provider_order("US")[:2] == ["mapbox", "google"]
+    assert get_map_provider_order("cn")[:2] == ["mapbox", "google"]
+
+
+async def test_routes_china_destinations_to_amap() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", lambda request: _async_value(_place("amap"))),
+            "mapbox": FixtureMapProvider("mapbox", lambda request: _async_value(_place("mapbox"))),
+        }
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert place.provider == "amap"
+
+
+async def test_routes_international_destinations_to_mapbox_even_for_chinese_query() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", lambda request: _async_value(_place("amap"))),
+            "mapbox": FixtureMapProvider("mapbox", lambda request: _async_value(_place("mapbox"))),
+        }
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="US", query="北京"))
+
+    assert place.provider == "mapbox"
+
+
+async def test_falls_back_when_primary_times_out() -> None:
+    async def never(_: GeocodeRequest) -> NormalizedPlace:
+        await asyncio.sleep(10)
+        return _place("amap")
+
+    registry = create_provider_registry(
+        operation_timeout_ms=1,
+        map_providers={
+            "amap": FixtureMapProvider("amap", never),
+            "mapbox": FixtureMapProvider("mapbox", lambda request: _async_value(_place("mapbox"))),
+        },
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert place.provider == "mapbox"
+
+
+async def test_caller_cancellation_cancels_active_provider_task() -> None:
+    started = asyncio.Event()
+    cleaned_up = asyncio.Event()
+
+    async def never(_: GeocodeRequest) -> NormalizedPlace:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cleaned_up.set()
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", never),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        },
+    )
+
+    task = asyncio.create_task(
+        registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+    )
+    await started.wait()
+
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert cleaned_up.is_set()
+
+
+async def test_provider_raised_timeout_is_network_failure_not_registry_timeout() -> None:
+    async def provider_timeout(_: GeocodeRequest) -> NormalizedPlace:
+        raise TimeoutError("provider timeout")
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", provider_timeout),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value({"provider": "bad"}),
+            ),
+        },
+    )
+
+    with pytest.raises(ProviderRegistryError) as ei:
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert [attempt.provider for attempt in ei.value.attempts] == ["amap", "mapbox"]
+    assert ei.value.attempts[0].code == "network_failure"
+    assert ei.value.attempts[0].message == "provider timeout"
+
+
+async def test_falls_back_when_primary_is_unhealthy() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider(
+                "amap",
+                lambda request: _async_value(_place("amap")),
+                ok=False,
+            ),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        },
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert place.provider == "mapbox"
+
+
+async def test_falls_back_when_primary_returns_invalid_payload() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", lambda request: _async_value({"coordinate": "31,121"})),
+            "mapbox": FixtureMapProvider("mapbox", lambda request: _async_value(_place("mapbox"))),
+        },
+    )
+
+    place = await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert place.provider == "mapbox"
+
+
+async def test_registry_does_not_wrap_provider_programmer_errors() -> None:
+    async def buggy_provider(_: GeocodeRequest) -> NormalizedPlace:
+        raise TypeError("provider bug")
+
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", buggy_provider),
+            "mapbox": FixtureMapProvider(
+                "mapbox",
+                lambda request: _async_value(_place("mapbox")),
+            ),
+        }
+    )
+
+    with pytest.raises(TypeError, match="provider bug"):
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+
+async def test_returns_registry_error_when_fallback_also_fails() -> None:
+    registry = create_provider_registry(
+        map_providers={
+            "amap": FixtureMapProvider("amap", lambda request: _async_value({"coordinate": "31,121"})),
+            "mapbox": FixtureMapProvider("mapbox", lambda request: _async_value({"provider": "bad"})),
+        },
+    )
+
+    with pytest.raises(ProviderRegistryError) as ei:
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert ei.value.code == "PROVIDER_FALLBACK_FAILED"
+    assert [attempt.provider for attempt in ei.value.attempts] == ["amap", "mapbox"]
+    assert ei.value.attempts[0].code == "invalid_normalized_payload"
+
+
+async def test_default_registry_with_missing_env_gives_clear_provider_attempts() -> None:
+    registry = create_default_provider_registry(env={})
+
+    with pytest.raises(ProviderRegistryError) as ei:
+        await registry.geocode(GeocodeRequest(country_code="CN", query="Shanghai"))
+
+    assert ei.value.attempts
+    assert "AMAP_API_KEY is not configured" in ei.value.attempts[0].message
+
+
+def test_default_registry_prefers_amap_mcp_when_url_configured() -> None:
+    registry = create_default_provider_registry(
+        env={
+            "AMAP_MCP_URL": "http://127.0.0.1:8899/mcp",
+            "AMAP_API_KEY": "rest-key",
+            "MAPBOX_ACCESS_TOKEN": "mapbox-token",
+        }
+    )
+
+    provider = registry._map_providers["amap"]  # noqa: SLF001
+
+    assert provider.__class__.__name__ == "AMapMCPMapProvider"
+
+
+def test_default_registry_uses_amap_rest_when_mcp_url_missing() -> None:
+    registry = create_default_provider_registry(
+        env={
+            "AMAP_API_KEY": "rest-key",
+            "MAPBOX_ACCESS_TOKEN": "mapbox-token",
+        }
+    )
+
+    provider = registry._map_providers["amap"]  # noqa: SLF001
+
+    assert provider.__class__.__name__ == "AMapMapProvider"
+
+
+async def test_registry_exposes_configured_non_map_providers() -> None:
+    registry = create_default_provider_registry(env={"TAVILY_API_KEY": "tvly"})
+
+    assert registry.search_provider is not None
+    assert registry.weather_provider is not None
+    assert registry.supplier_provider is not None
+
+
+async def test_geocode_requires_country_code() -> None:
+    registry = create_provider_registry(
+        map_providers={"mapbox": FixtureMapProvider("mapbox", lambda request: _async_value(_place("mapbox")))}
+    )
+
+    with pytest.raises(ValueError, match="country_code is required"):
+        await registry.geocode(GeocodeRequest(query="Shanghai"))
+
+
+async def _async_value(value):
+    return value
