@@ -8,7 +8,7 @@ interface PreferenceFormProps {
 }
 
 export function PreferenceForm({ onSubmit }: PreferenceFormProps) {
-  const [areaVibe, setAreaVibe] = useState("central, walkable, good food nearby")
+  const [areaVibe, setAreaVibe] = useState("中心、方便步行、附近有好吃的")
   const [quietVsLively, setQuietVsLively] = useState<Preference["quiet_vs_lively"]>("balanced")
   const [stayType, setStayType] = useState<Preference["stay_type"]>("hotel")
   const [willingToChangeHotels, setWillingToChangeHotels] = useState(false)
@@ -38,55 +38,58 @@ export function PreferenceForm({ onSubmit }: PreferenceFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid w-full max-w-4xl gap-5 md:grid-cols-2">
-      <label className="flex flex-col gap-2 text-sm font-medium text-slate-700 md:col-span-2">
-        Area vibe
+    <form
+      onSubmit={handleSubmit}
+      className="grid w-full max-w-4xl gap-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:grid-cols-2"
+    >
+      <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700 md:col-span-2">
+        住宿区域偏好
         <textarea
           value={areaVibe}
           onChange={(event) => setAreaVibe(event.target.value)}
-          className="min-h-24 rounded-md border border-slate-300 px-3 py-2 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className="min-h-24 rounded-md border border-slate-300 px-3 py-2 text-base text-slate-950 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
           required
         />
       </label>
 
-      <Select label="Quiet vs lively" value={quietVsLively} onChange={setQuietVsLively}>
-        <option value="quiet">Quiet</option>
-        <option value="balanced">Balanced</option>
-        <option value="lively">Lively</option>
+      <Select label="安静或热闹" value={quietVsLively} onChange={setQuietVsLively}>
+        <option value="quiet">更安静</option>
+        <option value="balanced">均衡</option>
+        <option value="lively">更热闹</option>
       </Select>
 
-      <Select label="Stay type" value={stayType} onChange={setStayType}>
-        <option value="hotel">Hotel</option>
-        <option value="homestay">Homestay</option>
-        <option value="flexible">Flexible</option>
+      <Select label="住宿类型" value={stayType} onChange={setStayType}>
+        <option value="hotel">酒店</option>
+        <option value="homestay">民宿</option>
+        <option value="flexible">都可以</option>
       </Select>
 
-      <Select label="Intercity transport" value={transport} onChange={setTransport}>
-        <option value="rail">Rail</option>
-        <option value="flight">Flight</option>
-        <option value="flexible">Flexible</option>
+      <Select label="城际交通" value={transport} onChange={setTransport}>
+        <option value="rail">高铁/火车优先</option>
+        <option value="flight">飞机优先</option>
+        <option value="flexible">都可以</option>
       </Select>
 
-      <Select label="Early departure tolerance" value={earlyDeparture} onChange={setEarlyDeparture}>
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
+      <Select label="早出发接受度" value={earlyDeparture} onChange={setEarlyDeparture}>
+        <option value="low">尽量不要太早</option>
+        <option value="medium">可以适中</option>
+        <option value="high">能接受早出发</option>
       </Select>
 
-      <Select label="Transfer tolerance" value={transferTolerance} onChange={setTransferTolerance}>
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
+      <Select label="换乘接受度" value={transferTolerance} onChange={setTransferTolerance}>
+        <option value="low">尽量少换乘</option>
+        <option value="medium">适中即可</option>
+        <option value="high">可接受多换乘</option>
       </Select>
 
-      <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-3">
+      <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <input
             type="checkbox"
             checked={willingToChangeHotels}
             onChange={(event) => setWillingToChangeHotels(event.target.checked)}
           />
-          Willing to change hotels
+          可以中途更换住宿
         </label>
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <input
@@ -94,7 +97,7 @@ export function PreferenceForm({ onSubmit }: PreferenceFormProps) {
             checked={payMore}
             onChange={(event) => setPayMore(event.target.checked)}
           />
-          Spend more to save time
+          愿意多花一点钱来节省时间
         </label>
       </div>
 
@@ -102,9 +105,9 @@ export function PreferenceForm({ onSubmit }: PreferenceFormProps) {
         <button
           type="submit"
           disabled={submitting}
-          className="h-11 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800 disabled:bg-slate-400"
+          className="h-12 w-full rounded-md bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:bg-slate-400 sm:w-auto"
         >
-          {submitting ? "Generating..." : "Generate itinerary"}
+          {submitting ? "正在生成..." : "生成完整行程"}
         </button>
       </div>
     </form>
@@ -123,12 +126,12 @@ function Select<T extends string>({
   children: React.ReactNode
 }) {
   return (
-    <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+    <label className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
       {label}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
-        className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+        className="h-12 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
       >
         {children}
       </select>

@@ -265,10 +265,10 @@ describe("result page model helpers", () => {
 
   it("classifies budget, pace, route, and risk statuses", () => {
     const session = sessionFixture()
-    expect(budgetFitStatus(session).status).toBe("Within range")
-    expect(paceStatus(session.itinerary).status).toBe("Balanced pace")
-    expect(routeStatus(session.itinerary).status).toBe("Some routes need confirmation")
-    expect(riskStatus(session.itinerary).status).toBe("1 warning to review")
+    expect(budgetFitStatus(session).status).toBe("预算内")
+    expect(paceStatus(session.itinerary).status).toBe("节奏均衡")
+    expect(routeStatus(session.itinerary).status).toBe("部分路线需确认")
+    expect(riskStatus(session.itinerary).status).toBe("1 条提醒待确认")
   })
 
   it("falls back to hard constraint budget when itinerary user budget is missing", () => {
@@ -279,28 +279,28 @@ describe("result page model helpers", () => {
       total: band(3650, 5500),
     }
 
-    expect(budgetFitStatus(session).status).toBe("Within range")
+    expect(budgetFitStatus(session).status).toBe("预算内")
   })
 
   it("returns budget pending without an itinerary budget even when discovery has an estimate", () => {
     const session = sessionFixture({ itinerary: null })
 
-    expect(budgetFitStatus(session).status).toBe("Budget pending")
+    expect(budgetFitStatus(session).status).toBe("预算待确认")
   })
 
   it("builds narrative route cards from itinerary days", () => {
     const items = narrativeRouteItems(sessionFixture())
     expect(items[0]).toMatchObject({
       dayIndex: 1,
-      title: "Day 1: Check in, then The Bund",
+      title: "第 1 天：入住，然后 The Bund",
       anchors: ["Drop bags near People's Square.", "The Bund", "Keep lunch flexible near the morning area."],
     })
   })
 
   it("suggests smart adjustment prompts from session state", () => {
     const prompts = smartAdjustmentPrompts(sessionFixture())
-    expect(prompts).toContain("Review 1 itinerary warning")
-    expect(prompts).toContain("Confirm route details for segments without mapped places")
+    expect(prompts).toContain("查看 1 条行程提醒")
+    expect(prompts).toContain("确认缺少地图坐标的路线")
   })
 
   it("keeps route confirmation visible when prompt categories exceed the cap", () => {
@@ -319,8 +319,8 @@ describe("result page model helpers", () => {
     const prompts = smartAdjustmentPrompts(session)
 
     expect(prompts).toHaveLength(3)
-    expect(prompts).toContain("Compare stay area alternatives")
-    expect(prompts).toContain("Review budget and reduce higher-cost blocks")
-    expect(prompts).toContain("Confirm route details for segments without mapped places")
+    expect(prompts).toContain("比较住宿区域备选")
+    expect(prompts).toContain("复核预算并压缩高成本安排")
+    expect(prompts).toContain("确认缺少地图坐标的路线")
   })
 })

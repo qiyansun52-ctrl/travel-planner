@@ -87,41 +87,41 @@ export function budgetFitStatus(session: PlanningSession): ResultMetric {
   const userBudget = budget ? budget.user_budget || session.hard_constraints.total_budget : 0
 
   if (!userBudget || userBudget <= 0 || !budget) {
-    return metric("Budget fit", "Budget pending", "neutral", "Generate an itinerary to confirm total trip cost.", "Pending")
+    return metric("预算匹配", "预算待确认", "neutral", "生成行程后会确认整趟旅行的费用区间。", "待确认")
   }
 
   if (budget.overrun_flag || budget.total.high > userBudget) {
     return metric(
-      "Budget fit",
-      "Over budget",
+      "预算匹配",
+      "超出预算",
       "danger",
-      `Planned total ${formatBand(budget.total)} vs ${budget.currency} ${formatAmount(userBudget)} budget.`,
+      `计划合计 ${formatBand(budget.total)}，高于 ${budget.currency} ${formatAmount(userBudget)} 的预算。`,
       formatBand(budget.total),
     )
   }
 
   return metric(
-    "Budget fit",
-    "Within range",
+    "预算匹配",
+    "预算内",
     "good",
-    `Planned total ${formatBand(budget.total)} stays within the trip budget.`,
+    `计划合计 ${formatBand(budget.total)}，仍在整趟旅行预算内。`,
     formatBand(budget.total),
   )
 }
 
 export function paceStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return metric("Pace", "Pace pending", "neutral", "Generate an itinerary to review daily pacing.", "Pending")
+    return metric("节奏", "节奏待确认", "neutral", "生成行程后会检查每天安排是否过密。", "待确认")
   }
 
   if (itinerary.days.some((day) => day.segments.length >= 6)) {
     const packedDays = itinerary.days.filter((day) => day.segments.length >= 6).length
     return metric(
-      "Pace",
-      "Packed days",
+      "节奏",
+      "密度偏高",
       "warning",
-      `${packedDays} ${packedDays === 1 ? "day has" : "days have"} six or more scheduled blocks.`,
-      `${packedDays} packed`,
+      `${packedDays} 天安排了 6 个或更多时间块。`,
+      `${packedDays} 天偏满`,
     )
   }
 
@@ -131,26 +131,26 @@ export function paceStatus(itinerary: Itinerary | null): ResultMetric {
       0,
     )
     return metric(
-      "Pace",
-      "Balanced pace",
+      "节奏",
+      "节奏均衡",
       "good",
-      `${restBlocks} flexible rest ${restBlocks === 1 ? "block is" : "blocks are"} scheduled.`,
-      `${restBlocks} rest`,
+      `已安排 ${restBlocks} 个弹性休息时间块。`,
+      `${restBlocks} 个休息`,
     )
   }
 
   return metric(
-    "Pace",
-    "Steady pace",
+    "节奏",
+    "节奏稳定",
     "neutral",
-    `${itinerary.days.length} ${itinerary.days.length === 1 ? "day" : "days"} scheduled without rest blocks.`,
-    `${itinerary.days.length} days`,
+    `${itinerary.days.length} 天已排入日程，暂未安排专门休息块。`,
+    `${itinerary.days.length} 天`,
   )
 }
 
 export function routeStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return metric("Route", "Route pending", "neutral", "Generate an itinerary to confirm mapped places.", "Pending")
+    return metric("路线", "路线待确认", "neutral", "生成行程后会确认地点坐标与移动路线。", "待确认")
   }
 
   const placeSegments = itinerary.days.flatMap((day) =>
@@ -158,57 +158,57 @@ export function routeStatus(itinerary: Itinerary | null): ResultMetric {
   )
 
   if (placeSegments.length === 0) {
-    return metric("Route", "Route light", "neutral", "No place-based segments need mapping yet.", "0 stops")
+    return metric("路线", "路线较轻", "neutral", "当前没有需要地图确认的地点型安排。", "0 站")
   }
 
   const mappedCount = placeSegments.filter((segment) => segment.place?.coordinate).length
   if (mappedCount < placeSegments.length) {
     return metric(
-      "Route",
-      "Some routes need confirmation",
+      "路线",
+      "部分路线需确认",
       "warning",
-      `${placeSegments.length - mappedCount} of ${placeSegments.length} place segments need mapped coordinates.`,
+      `${placeSegments.length - mappedCount}/${placeSegments.length} 个地点安排还缺少坐标。`,
       `${mappedCount}/${placeSegments.length}`,
     )
   }
 
   return metric(
-    "Route",
-    "Mapped route",
+    "路线",
+    "路线已映射",
     "good",
-    `All ${placeSegments.length} place segments include mapped coordinates.`,
+    `${placeSegments.length} 个地点安排都已有地图坐标。`,
     `${mappedCount}/${placeSegments.length}`,
   )
 }
 
 export function riskStatus(itinerary: Itinerary | null): ResultMetric {
   if (!itinerary) {
-    return metric("Risks", "Risks pending", "neutral", "Generate an itinerary to run validation checks.", "Pending")
+    return metric("风险", "风险待确认", "neutral", "生成行程后会运行预算、节奏和时间窗口检查。", "待确认")
   }
 
   const errorCount = itinerary.validator_issues.filter((issue) => issue.severity === "error").length
   if (errorCount > 0) {
     return metric(
-      "Risks",
-      pluralize(errorCount, "issue", "to fix"),
+      "风险",
+      `${errorCount} 条问题待修正`,
       "danger",
-      `${errorCount} validation ${errorCount === 1 ? "error needs" : "errors need"} attention.`,
-      `${errorCount} error${errorCount === 1 ? "" : "s"}`,
+      `${errorCount} 条校验错误需要处理。`,
+      `${errorCount} 错误`,
     )
   }
 
   const warningCount = itinerary.validator_issues.filter((issue) => issue.severity === "warning").length
   if (warningCount > 0) {
     return metric(
-      "Risks",
-      pluralize(warningCount, "warning", "to review"),
+      "风险",
+      `${warningCount} 条提醒待确认`,
       "warning",
-      `${warningCount} validation ${warningCount === 1 ? "warning needs" : "warnings need"} review.`,
-      `${warningCount} warnings`,
+      `${warningCount} 条校验提醒需要复核。`,
+      `${warningCount} 提醒`,
     )
   }
 
-  return metric("Risks", "No issues flagged", "good", "Validation found no itinerary issues.", "0 issues")
+  return metric("风险", "暂无风险", "good", "校验未发现行程问题。", "0 问题")
 }
 
 export function narrativeRouteItems(session: PlanningSession): NarrativeRouteItem[] {
@@ -228,15 +228,15 @@ export function smartAdjustmentPrompts(session: PlanningSession): string[] {
   const prompts: string[] = []
 
   if ((session.stay_recommendation?.alternatives.length ?? 0) > 0) {
-    prompts.push("Compare stay area alternatives")
+    prompts.push("比较住宿区域备选")
   }
 
   if (session.itinerary?.budget.overrun_flag) {
-    prompts.push("Review budget and reduce higher-cost blocks")
+    prompts.push("复核预算并压缩高成本安排")
   }
 
   if (routeStatus(session.itinerary).tone === "warning") {
-    prompts.push("Confirm route details for segments without mapped places")
+    prompts.push("确认缺少地图坐标的路线")
   }
 
   const issues = session.itinerary?.validator_issues ?? []
@@ -244,9 +244,9 @@ export function smartAdjustmentPrompts(session: PlanningSession): string[] {
   const warningCount = issues.filter((issue) => issue.severity === "warning").length
   const issueCount = issues.length
   if (errorCount > 0) {
-    prompts.push(`Review ${issueCount} itinerary ${issueCount === 1 ? "issue" : "issues"}`)
+    prompts.push(`查看 ${issueCount} 条行程问题`)
   } else if (warningCount > 0) {
-    prompts.push(`Review ${warningCount} itinerary ${warningCount === 1 ? "warning" : "warnings"}`)
+    prompts.push(`查看 ${warningCount} 条行程提醒`)
   }
 
   return prompts.slice(0, 3)
@@ -304,27 +304,27 @@ function dayTitle(day: ItineraryDay, cardsById: Map<string, DiscoveryCard>): str
   ).slice(0, 2)
 
   if (labels.length === 0) {
-    return `Day ${day.day_index}: Flexible day`
+    return `第 ${day.day_index} 天：弹性安排`
   }
 
   if (labels.length === 1) {
-    return `Day ${day.day_index}: ${labels[0]}`
+    return `第 ${day.day_index} 天：${labels[0]}`
   }
 
-  return `Day ${day.day_index}: ${labels[0]}, then ${labels[1]}`
+  return `第 ${day.day_index} 天：${labels[0]}，然后 ${labels[1]}`
 }
 
 function segmentLabel(segment: ItinerarySegment, cardsById: Map<string, DiscoveryCard>): string {
   if (segment.type === "hotel_checkin") {
-    return "Check in"
+    return "入住"
   }
 
   if (segment.type === "hotel_checkout") {
-    return "Check out"
+    return "退房"
   }
 
   if (segment.type === "hotel_return") {
-    return "Return to hotel"
+    return "返回住宿"
   }
 
   return segment.place?.name ?? cardName(segment, cardsById) ?? friendlyType(segment.type)
@@ -348,21 +348,17 @@ function friendlyType(type: ItinerarySegment["type"]): string {
 function dayBudgetHint(day: ItineraryDay): string {
   const costs = day.segments.flatMap((segment) => (segment.cost_estimate ? [segment.cost_estimate] : []))
   if (costs.length === 0) {
-    return "No scheduled costs"
+    return "暂无已排费用"
   }
 
   const currency = costs[0].currency
   const low = costs.reduce((sum, cost) => sum + cost.low, 0)
   const high = costs.reduce((sum, cost) => sum + cost.high, 0)
-  return `${currency} ${formatAmount(low)}-${formatAmount(high)} scheduled`
+  return `${currency} ${formatAmount(low)}-${formatAmount(high)} 已排入日程`
 }
 
 function formatAmount(value: number): string {
   return Math.round(value).toLocaleString("en-US")
-}
-
-function pluralize(count: number, singular: string, suffix: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"} ${suffix}`
 }
 
 function metric(

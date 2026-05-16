@@ -14,7 +14,7 @@ export function ItineraryDayCard({
   return (
     <article className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <header className="min-w-0 border-b border-slate-200 pb-4">
-        <p className="text-sm font-medium text-slate-500">Day {day.day_index}</p>
+        <p className="text-sm font-medium text-slate-500">第 {day.day_index} 天</p>
         <h3 className="mt-1 break-words text-xl font-semibold text-slate-950">
           <time dateTime={day.date}>{formatDisplayDate(day.date)}</time>
         </h3>
@@ -75,10 +75,16 @@ export function ItineraryDayCard({
 }
 
 function formatSegmentType(type: ItineraryDay["segments"][number]["type"]): string {
-  return type
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+  const labels: Record<ItineraryDay["segments"][number]["type"], string> = {
+    attraction: "体验",
+    food: "餐饮",
+    hotel_checkin: "入住",
+    hotel_checkout: "退房",
+    hotel_return: "返回住宿",
+    rest: "休息",
+    transit: "移动",
+  }
+  return labels[type]
 }
 
 function formatDisplayDate(value: string): string {
@@ -90,7 +96,7 @@ function formatDisplayDate(value: string): string {
   const [, year, month, day] = match
   const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",

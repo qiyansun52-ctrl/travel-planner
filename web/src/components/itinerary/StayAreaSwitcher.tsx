@@ -33,7 +33,7 @@ export function StayAreaSwitcher({ stay, onSelect }: StayAreaSwitcherProps) {
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-slate-500">Stay area</p>
+          <p className="text-sm text-slate-500">住宿区域</p>
           <h2 className="mt-1 text-lg font-semibold text-slate-950">{active.area.name}</h2>
           <p className="mt-1 text-sm text-slate-600">{active.fit_reason}</p>
         </div>
@@ -42,7 +42,7 @@ export function StayAreaSwitcher({ stay, onSelect }: StayAreaSwitcherProps) {
           onClick={() => setOpen((value) => !value)}
           className="h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
         >
-          Change area
+          切换区域
         </button>
       </div>
 
@@ -70,7 +70,7 @@ export function StayAreaSwitcher({ stay, onSelect }: StayAreaSwitcherProps) {
             onClick={() => choose(null)}
             className="h-9 rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
-            Reset to recommended
+            重置为推荐
           </button>
         </div>
       )}

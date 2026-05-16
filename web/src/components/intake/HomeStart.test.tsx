@@ -7,13 +7,8 @@ vi.mock("next/navigation", () => ({
 }))
 
 describe("HomeStart", () => {
-  it("toggles the start screen and intake form between English and Chinese", () => {
+  it("starts in Chinese and can switch the intake flow to English", () => {
     render(<HomeStart />)
-
-    expect(screen.getByRole("heading", { name: "Plan a single-city trip" })).toBeInTheDocument()
-    expect(screen.getByLabelText("Departure city")).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole("button", { name: "切换到中文" }))
 
     expect(screen.getByRole("heading", { name: "规划一趟单城市旅行" })).toBeInTheDocument()
     expect(screen.getByLabelText("出发城市")).toBeInTheDocument()
@@ -22,5 +17,10 @@ describe("HomeStart", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch to English" }))
 
     expect(screen.getByRole("heading", { name: "Plan a single-city trip" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Departure city")).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("button", { name: "切换到中文" }))
+
+    expect(screen.getByRole("heading", { name: "规划一趟单城市旅行" })).toBeInTheDocument()
   })
 })

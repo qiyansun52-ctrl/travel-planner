@@ -48,7 +48,7 @@ export function RecentTrips({
         {sessions.map((session) => (
           <article
             key={session.session_id}
-            className="grid gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center"
+            className="grid gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm sm:grid-cols-[1fr_auto] sm:items-center"
           >
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold text-slate-950">

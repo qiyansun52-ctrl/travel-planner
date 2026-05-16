@@ -49,9 +49,9 @@ export function ResultMetrics({ metrics }: ResultMetricsProps) {
     <section aria-labelledby="trip-decision-metrics" className="space-y-3">
       <h2
         id="trip-decision-metrics"
-        className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500"
+        className="text-sm font-semibold uppercase text-slate-500"
       >
-        Trip decision metrics
+        行程判断指标
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => {
@@ -64,7 +64,7 @@ export function ResultMetrics({ metrics }: ResultMetricsProps) {
             >
               <div className="flex min-w-0 flex-col gap-2">
                 <p
-                  className={`break-words text-xs font-semibold uppercase tracking-[0.14em] ${styles.label}`}
+                  className={`break-words text-xs font-semibold uppercase ${styles.label}`}
                 >
                   {metric.label}
                 </p>

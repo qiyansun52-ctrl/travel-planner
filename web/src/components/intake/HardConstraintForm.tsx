@@ -58,12 +58,15 @@ const formCopy = {
   },
 } satisfies Record<IntakeLanguage, Record<string, string>>
 
-export function HardConstraintForm({ language = "en", onSubmit }: HardConstraintFormProps) {
+const inputClass =
+  "h-12 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+
+export function HardConstraintForm({ language = "zh", onSubmit }: HardConstraintFormProps) {
   const router = useRouter()
   const text = formCopy[language]
   const [departureCity, setDepartureCity] = useState("北京")
   const [destinationCity, setDestinationCity] = useState("上海")
-  const [departureDate, setDepartureDate] = useState("2026-05-10")
+  const [departureDate, setDepartureDate] = useState(() => defaultDepartureDate())
   const [durationDays, setDurationDays] = useState(3)
   const [travelerCount, setTravelerCount] = useState(2)
   const [totalBudget, setTotalBudget] = useState(6000)
@@ -116,13 +119,16 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid w-full max-w-5xl gap-5 md:grid-cols-2">
+    <form
+      onSubmit={handleSubmit}
+      className="grid w-full max-w-5xl gap-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 md:grid-cols-2"
+    >
       <Field id="departure-city" label={text.departureCity}>
         <input
           id="departure-city"
           value={departureCity}
           onChange={(event) => setDepartureCity(event.target.value)}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
       </Field>
@@ -133,7 +139,7 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
           list="destination-options"
           value={destinationCity}
           onChange={(event) => setDestinationCity(event.target.value)}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
         <datalist id="destination-options">
@@ -150,8 +156,9 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
           id="departure-date"
           type="date"
           value={departureDate}
+          min={defaultDepartureDate(1)}
           onChange={(event) => setDepartureDate(event.target.value)}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
       </Field>
@@ -163,7 +170,7 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
           min={1}
           value={durationDays}
           onChange={(event) => setDurationDays(Number(event.target.value))}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
       </Field>
@@ -175,7 +182,7 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
           min={1}
           value={travelerCount}
           onChange={(event) => setTravelerCount(Number(event.target.value))}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
       </Field>
@@ -187,7 +194,7 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
           min={1}
           value={totalBudget}
           onChange={(event) => setTotalBudget(Number(event.target.value))}
-          className="h-11 rounded-md border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+          className={inputClass}
           required
         />
       </Field>
@@ -202,7 +209,7 @@ export function HardConstraintForm({ language = "en", onSubmit }: HardConstraint
         <button
           type="submit"
           disabled={submitting}
-          className="h-11 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="h-12 w-full rounded-md bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
         >
           {submitting ? text.submitting : text.submit}
         </button>
@@ -222,12 +229,23 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-slate-700" htmlFor={id}>
+      <label className="text-sm font-semibold text-slate-700" htmlFor={id}>
         {label}
       </label>
       {children}
     </div>
   )
+}
+
+function defaultDepartureDate(daysAhead = 14): string {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() + daysAhead)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 function resolveDestination(input: string): CityOption | null {

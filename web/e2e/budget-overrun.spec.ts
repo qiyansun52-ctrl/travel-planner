@@ -10,7 +10,7 @@ test("surfaces budget warning and overrun issue for a low-budget fixture trip", 
 }) => {
   await startFixtureTrip(page, "500")
 
-  await expect(page.getByText(/Budget warning/)).toBeVisible()
+  await expect(page.getByText(/预算提醒/)).toBeVisible()
 
   await selectDiscoveryCards(page)
   await submitPreferences(page)

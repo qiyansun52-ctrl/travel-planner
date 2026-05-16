@@ -14,13 +14,13 @@ export function ResultHero({ session }: ResultHeroProps) {
   const images = heroImages(session)
   const tags = destinationTags(session).slice(0, 5)
   const stay = activeStayOption(session)
-  const duration = pluralize(constraints.duration_days, "day")
-  const travelers = pluralize(constraints.traveler_count, "traveler")
+  const duration = `${constraints.duration_days} 天`
+  const travelers = `${constraints.traveler_count} 人`
   const budget = formatBudget(constraints.currency, constraints.total_budget)
   const departureDate = formatDate(constraints.departure_date)
   const storyLine = stay
-    ? `${duration} from ${constraints.departure_city}, with ${stay.area.name} as the stay base.`
-    : `${duration} from ${constraints.departure_city}, shaped around the places worth prioritizing.`
+    ? `从 ${constraints.departure_city} 出发的 ${duration}行程，以 ${stay.area.name} 作为住宿和移动基点。`
+    : `从 ${constraints.departure_city} 出发的 ${duration}行程，围绕已选择的重点体验组织路线。`
 
   return (
     <section
@@ -36,11 +36,11 @@ export function ResultHero({ session }: ResultHeroProps) {
         <div className="min-w-0">
           {images.length === 0 && (
             <p className="mb-3 inline-flex max-w-full rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-xs font-semibold text-slate-100 shadow-sm backdrop-blur">
-              Route texture
+              路线纹理
             </p>
           )}
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-100">
-            Destination story
+          <p className="text-xs font-semibold uppercase text-teal-100">
+            目的地故事
           </p>
           <h1
             id="result-hero-title"
@@ -54,7 +54,7 @@ export function ResultHero({ session }: ResultHeroProps) {
 
           {tags.length > 0 && (
             <div
-              aria-label="Top destination tags"
+              aria-label="目的地标签"
               className="mt-5 flex max-w-3xl flex-wrap gap-2"
             >
               {tags.map((tag) => (
@@ -71,11 +71,11 @@ export function ResultHero({ session }: ResultHeroProps) {
         </div>
 
         <dl className="grid min-w-0 gap-3 rounded-lg border border-white/15 bg-slate-950/55 p-4 shadow-sm backdrop-blur sm:grid-cols-2 lg:grid-cols-1">
-          <HeroFact label="Duration" value={duration} />
-          <HeroFact label="Departure" value={`${constraints.departure_city} - ${departureDate}`} />
-          <HeroFact label="Travelers" value={travelers} />
-          <HeroFact label="Budget" value={budget} />
-          {stay && <HeroFact label="Stay area" value={stay.area.name} />}
+          <HeroFact label="天数" value={duration} />
+          <HeroFact label="出发" value={`${constraints.departure_city} - ${departureDate}`} />
+          <HeroFact label="人数" value={travelers} />
+          <HeroFact label="预算" value={budget} />
+          {stay && <HeroFact label="住宿区域" value={stay.area.name} />}
         </dl>
       </div>
     </section>
@@ -133,7 +133,7 @@ function HeroFallbackTexture() {
 function HeroFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
-      <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">
+      <dt className="text-xs font-semibold uppercase text-slate-300">
         {label}
       </dt>
       <dd className="mt-1 break-words text-sm font-semibold leading-6 text-white">{value}</dd>
@@ -153,7 +153,7 @@ function imageClassName(index: number, count: number): string {
 
 function formatBudget(currency: string, value: number): string {
   if (value <= 0) {
-    return "Budget pending"
+    return "预算待确认"
   }
 
   return `${currency} ${Math.round(value).toLocaleString("en-US")}`
@@ -168,14 +168,10 @@ function formatDate(value: string): string {
   const [, year, month, day] = match
   const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
     year: "numeric",
   }).format(date)
-}
-
-function pluralize(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"}`
 }

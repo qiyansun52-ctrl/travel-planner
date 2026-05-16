@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { HardConstraintForm } from "./HardConstraintForm"
 
 vi.mock("next/navigation", () => ({
@@ -7,9 +7,13 @@ vi.mock("next/navigation", () => ({
 }))
 
 describe("HardConstraintForm", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("submits only hard constraints with resolved destination country code", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(<HardConstraintForm onSubmit={onSubmit} />)
+    render(<HardConstraintForm language="en" onSubmit={onSubmit} />)
 
     fireEvent.change(screen.getByLabelText(/Departure city/i), {
       target: { value: "北京" },
@@ -18,7 +22,7 @@ describe("HardConstraintForm", () => {
       target: { value: "上海" },
     })
     fireEvent.change(screen.getByLabelText(/Departure date/i), {
-      target: { value: "2026-05-10" },
+      target: { value: "2026-06-01" },
     })
     fireEvent.change(screen.getByLabelText(/Trip duration/i), {
       target: { value: "3" },
@@ -36,7 +40,7 @@ describe("HardConstraintForm", () => {
       departure_city: "北京",
       destination_city: "上海",
       destination_country_code: "CN",
-      departure_date: "2026-05-10",
+      departure_date: "2026-06-01",
       duration_days: 3,
       traveler_count: 2,
       total_budget: 6000,
@@ -46,7 +50,7 @@ describe("HardConstraintForm", () => {
 
   it("blocks unresolved destinations instead of guessing", async () => {
     const onSubmit = vi.fn()
-    render(<HardConstraintForm onSubmit={onSubmit} />)
+    render(<HardConstraintForm language="en" onSubmit={onSubmit} />)
 
     fireEvent.change(screen.getByLabelText(/Departure city/i), {
       target: { value: "北京" },
@@ -55,7 +59,7 @@ describe("HardConstraintForm", () => {
       target: { value: "Atlantis" },
     })
     fireEvent.change(screen.getByLabelText(/Departure date/i), {
-      target: { value: "2026-05-10" },
+      target: { value: "2026-06-01" },
     })
     fireEvent.click(screen.getByRole("button", { name: /Start discovering ideas/i }))
 
@@ -77,5 +81,14 @@ describe("HardConstraintForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始发现灵感" }))
 
     expect(await screen.findByText(/请选择支持的目的地/)).toBeInTheDocument()
+  })
+
+  it("defaults the departure date to a future day", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-05-12T12:00:00"))
+
+    render(<HardConstraintForm language="zh" onSubmit={vi.fn()} />)
+
+    expect(screen.getByLabelText("出发日期")).toHaveValue("2026-05-26")
   })
 })

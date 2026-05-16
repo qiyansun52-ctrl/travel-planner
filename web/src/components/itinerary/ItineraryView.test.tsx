@@ -234,15 +234,15 @@ describe("ItineraryView", () => {
   it("renders story-led command center sections with itinerary validation details", () => {
     renderItinerary()
 
-    expect(screen.getByText("Destination story")).toBeVisible()
-    expect(screen.getByText("Budget fit")).toBeVisible()
-    expect(screen.getByText("Narrative route")).toBeVisible()
+    expect(screen.getByText("目的地故事")).toBeVisible()
+    expect(screen.getByText("预算匹配")).toBeVisible()
+    expect(screen.getByText("叙事路线")).toBeVisible()
 
-    const executionRegion = screen.getByRole("region", { name: "Detailed itinerary" })
+    const executionRegion = screen.getByRole("region", { name: "详细行程" })
     expect(executionRegion).toBeVisible()
-    expect(within(executionRegion).getByText("Day-by-day execution")).toBeVisible()
+    expect(within(executionRegion).getByText("每日执行")).toBeVisible()
 
-    expect(screen.getByRole("heading", { name: "Companion brief" })).toBeVisible()
+    expect(screen.getByRole("heading", { name: "同行简报" })).toBeVisible()
     expect(screen.getByText("Adjustment panel slot")).toBeVisible()
     expect(screen.getByText("reservation_check")).toBeVisible()
     expect(screen.getByText(/Museum reservation may be required/)).toBeVisible()
@@ -260,7 +260,7 @@ describe("ItineraryView", () => {
 
     renderItinerary(session)
 
-    expect(screen.getByText("Route texture")).toBeVisible()
+    expect(screen.getByText("路线纹理")).toBeVisible()
   })
 
   it("surfaces the over-budget metric when the itinerary exceeds budget", () => {
@@ -275,6 +275,6 @@ describe("ItineraryView", () => {
 
     renderItinerary(session)
 
-    expect(screen.getByText("Over budget")).toBeVisible()
+    expect(screen.getByText("超出预算")).toBeVisible()
   })
 })

@@ -15,10 +15,10 @@ export function TripSpine({ session }: TripSpineProps) {
   const transportSummary = formatTransportSummary(session)
 
   const facts = [
-    ["Destination", constraints.destination_city],
-    ["Duration", pluralize(constraints.duration_days, "day")],
-    ["Travelers", pluralize(constraints.traveler_count, "traveler")],
-    ["Stay area", stay?.area.name ?? "Pending"],
+    ["目的地", constraints.destination_city],
+    ["天数", `${constraints.duration_days} 天`],
+    ["人数", `${constraints.traveler_count} 人`],
+    ["住宿区域", stay?.area.name ?? "待确认"],
   ] as const
 
   return (
@@ -28,8 +28,8 @@ export function TripSpine({ session }: TripSpineProps) {
     >
       <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
-            Trip spine
+          <p className="text-sm font-semibold uppercase text-teal-700">
+            行程主线
           </p>
           <h2
             id="trip-spine-title"
@@ -40,8 +40,8 @@ export function TripSpine({ session }: TripSpineProps) {
         </div>
 
         <div className="min-w-0 border-t border-slate-200 pt-3 lg:max-w-sm lg:border-t-0 lg:pt-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Transport
+          <p className="text-xs font-semibold uppercase text-slate-500">
+            交通
           </p>
           <p className="mt-1 break-words text-sm font-medium leading-5 text-slate-800">
             {transportSummary}
@@ -52,7 +52,7 @@ export function TripSpine({ session }: TripSpineProps) {
       <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {facts.map(([label, value]) => (
           <div key={label} className="min-w-0 border-t border-slate-200 pt-3">
-            <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            <dt className="text-xs font-semibold uppercase text-slate-500">
               {label}
             </dt>
             <dd className="mt-1 break-words text-sm font-semibold text-slate-950">
@@ -63,8 +63,8 @@ export function TripSpine({ session }: TripSpineProps) {
       </dl>
 
       <div className="mt-5 min-w-0 border-t border-slate-200 pt-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Travel tone
+        <p className="text-xs font-semibold uppercase text-slate-500">
+          旅行调性
         </p>
         {tags.length > 0 ? (
           <div className="mt-3 flex min-w-0 flex-wrap gap-2">
@@ -80,7 +80,7 @@ export function TripSpine({ session }: TripSpineProps) {
           </div>
         ) : (
           <p className="mt-2 break-words text-sm font-medium text-slate-700">
-            Tone tags pending
+            调性标签待确认
           </p>
         )}
       </div>
@@ -91,23 +91,24 @@ export function TripSpine({ session }: TripSpineProps) {
 function formatTransportSummary(session: PlanningSession): string {
   const transport = session.transport_recommendation
   if (!transport) {
-    return "Transport pending"
+    return "交通待确认"
   }
 
   const arrivalMode = formatMode(transport.arrival.mode)
   const departureMode = formatMode(transport.departure.mode)
   const intracityMode = formatMode(transport.intracity.primary_mode)
 
-  return `${arrivalMode} arrival, ${departureMode} departure, ${intracityMode} in-city.`
+  return `抵达 ${arrivalMode}，返程 ${departureMode}，市内以${intracityMode}为主。`
 }
 
 function formatMode(value: string): string {
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
-function pluralize(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"}`
+  const labels: Record<string, string> = {
+    flight: "飞机",
+    rail: "高铁/火车",
+    transit: "公共交通",
+    taxi: "打车",
+    walk: "步行",
+    flexible: "灵活安排",
+  }
+  return labels[value] ?? value.replaceAll("_", " ")
 }

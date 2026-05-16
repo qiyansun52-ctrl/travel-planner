@@ -9,12 +9,12 @@ test("resumes a recent fixture trip from the home page", async ({ page }) => {
   }
   await page.goto("/")
 
-  await expect(page.getByRole("heading", { name: "Recent trips" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "最近行程" })).toBeVisible()
   await expect(page.getByText("上海").first()).toBeVisible()
   await page.locator(`a[href="/discovery/${sessionId}"]`).click()
 
   await expect(page).toHaveURL(/\/discovery\/session_/, { timeout: 15_000 })
-  await expect(page.getByRole("heading", { name: /Choose what feels worth it/ })).toBeVisible({
+  await expect(page.getByRole("heading", { name: /选择真正值得去的体验/ })).toBeVisible({
     timeout: 15_000,
   })
 })

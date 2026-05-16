@@ -15,14 +15,14 @@ export function NarrativeRoute({ items }: NarrativeRouteProps) {
       className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5"
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500">
-          Narrative route
+        <p className="text-sm font-semibold uppercase text-teal-700">
+          叙事路线
         </p>
         <h2
           id="narrative-route-title"
           className="mt-2 break-words text-xl font-semibold text-slate-950"
         >
-          The trip arc
+          行程弧线
         </h2>
       </div>
 
@@ -33,8 +33,8 @@ export function NarrativeRoute({ items }: NarrativeRouteProps) {
             className="grid min-w-0 gap-3 border-l-2 border-slate-200 pl-4 sm:grid-cols-[112px_1fr]"
           >
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Day {item.dayIndex}
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                第 {item.dayIndex} 天
               </p>
               <p className="mt-1 break-words text-sm font-medium text-slate-700">
                 {formatDate(item.date)}
@@ -83,7 +83,7 @@ function formatDate(value: string): string {
   const [, year, month, day] = match
   const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("zh-CN", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",

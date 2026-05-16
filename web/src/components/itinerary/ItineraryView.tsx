@@ -51,14 +51,14 @@ export function ItineraryView({
             className="min-w-0 space-y-4"
           >
             <div className="min-w-0">
-              <p className="text-sm font-medium uppercase text-slate-500">
-                Day-by-day execution
+              <p className="text-sm font-semibold uppercase text-teal-700">
+                每日执行
               </p>
               <h2
                 id="detailed-itinerary-title"
                 className="mt-2 break-words text-2xl font-semibold text-slate-950"
               >
-                Detailed itinerary
+                详细行程
               </h2>
             </div>
 

@@ -37,7 +37,7 @@ export default function DiscoveryPage() {
       })
       .catch((loadError) => {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : "Discovery failed")
+          setError(loadError instanceof Error ? loadError.message : "发现阶段失败")
         }
       })
 
@@ -47,7 +47,7 @@ export default function DiscoveryPage() {
   }, [sessionId])
 
   if (error) return <Centered message={error} />
-  if (!session?.discovery_state?.payload) return <Centered message="Preparing discovery..." />
+  if (!session?.discovery_state?.payload) return <Centered message="正在整理发现卡片..." />
 
   return (
     <DiscoveryBoard

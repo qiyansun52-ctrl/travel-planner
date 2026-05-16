@@ -30,29 +30,29 @@ export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) 
       >
         <h2
           id="companion-rail-spatial-brief"
-          className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+          className="text-sm font-medium uppercase text-slate-500"
         >
-          Spatial brief
+          空间简报
         </h2>
         <div className="mt-4 space-y-3">
           <BriefRow
-            label="Mapped places"
+            label="地图地点"
             value={
               routePlaces.total > 0
-                ? `${routePlaces.mapped} of ${routePlaces.total} with coordinates`
-                : "No mapped places yet"
+                ? `${routePlaces.mapped}/${routePlaces.total} 已有坐标`
+                : "暂无地图地点"
             }
           />
           {stay && (
             <BriefRow
-              label="Stay base"
+              label="住宿基点"
               value={stay.area.name}
               detail={stay.fit_reason}
             />
           )}
           {session.transport_recommendation && (
             <BriefRow
-              label="Local movement"
+              label="市内移动"
               value={formatMode(session.transport_recommendation.intracity.primary_mode)}
               detail={session.transport_recommendation.intracity.note ?? undefined}
             />
@@ -66,21 +66,18 @@ export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) 
       >
         <h2
           id="companion-rail-companion-brief"
-          className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+          className="text-sm font-medium uppercase text-slate-500"
         >
-          Companion brief
+          同行简报
         </h2>
         <div className="mt-4 space-y-3">
-          <BriefRow label="Destination" value={constraints.destination_city} />
+          <BriefRow label="目的地" value={constraints.destination_city} />
           <BriefRow
-            label="Trip shape"
-            value={`${pluralize(constraints.duration_days, "day")} for ${pluralize(
-              constraints.traveler_count,
-              "traveler",
-            )}`}
+            label="行程形态"
+            value={`${constraints.duration_days} 天 · ${constraints.traveler_count} 人`}
           />
           <BriefRow
-            label="Budget"
+            label="预算"
             value={formatBudget(constraints.currency, constraints.total_budget)}
           />
         </div>
@@ -93,9 +90,9 @@ export function CompanionRail({ session, adjustmentPanel }: CompanionRailProps) 
         >
           <h2
             id="companion-rail-smart-adjustments"
-            className="text-sm font-medium uppercase tracking-[0.16em] text-slate-500"
+            className="text-sm font-medium uppercase text-slate-500"
           >
-            Smart adjustments
+            智能调整
           </h2>
           <ul className="mt-4 space-y-2">
             {prompts.map((prompt) => (
@@ -126,7 +123,7 @@ function BriefRow({
 }) {
   return (
     <div className="min-w-0 border-t border-slate-200 pt-3 first:border-t-0 first:pt-0">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+      <p className="text-xs font-semibold uppercase text-slate-500">
         {label}
       </p>
       <p className="mt-1 break-words text-sm font-semibold text-slate-950">{value}</p>
@@ -188,19 +185,20 @@ function routeSegmentKey(dayIndex: number, segment: ItinerarySegment): string {
 
 function formatBudget(currency: string, value: number): string {
   if (value <= 0) {
-    return "Budget pending"
+    return "预算待确认"
   }
 
   return `${currency} ${Math.round(value).toLocaleString("en-US")}`
 }
 
 function formatMode(value: string): string {
-  return value
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
-function pluralize(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"}`
+  const labels: Record<string, string> = {
+    flight: "飞机",
+    rail: "高铁/火车",
+    transit: "公共交通",
+    taxi: "打车",
+    walk: "步行",
+    flexible: "灵活安排",
+  }
+  return labels[value] ?? value.replaceAll("_", " ")
 }

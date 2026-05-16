@@ -36,7 +36,7 @@ export default function TripPage() {
         })
         if (active) setSession(planned)
       } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : "Planning failed")
+        if (active) setError(loadError instanceof Error ? loadError.message : "规划失败")
       } finally {
         if (active) setPlanning(false)
       }
@@ -70,8 +70,8 @@ export default function TripPage() {
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
               {canAdjust(session)
-                ? "The itinerary is being refreshed. You can still adjust the trip from the side panel."
-                : "Generating final itinerary..."}
+                ? "行程正在刷新，你仍然可以从侧边调整区继续提出需求。"
+                : "正在生成完整行程..."}
             </div>
             {canAdjust(session) && (
               <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
@@ -81,7 +81,7 @@ export default function TripPage() {
           </div>
         ) : (
           <div className="rounded-lg border border-slate-200 bg-white p-6 text-slate-600">
-            Generating final itinerary...
+            正在生成完整行程...
           </div>
         )}
       </div>
