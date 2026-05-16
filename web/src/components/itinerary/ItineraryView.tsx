@@ -32,12 +32,12 @@ export function ItineraryView({
     <div className="space-y-6">
       <ResultHero session={session} />
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 xl:col-start-1">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 lg:col-start-1">
           <TripSpine session={session} />
         </div>
 
-        <div className="min-w-0 space-y-5 xl:col-start-1">
+        <div className="min-w-0 space-y-5 lg:col-start-1">
           <ResultMetrics metrics={commandMetrics(session)} />
 
           {session.stay_recommendation && (
@@ -78,8 +78,8 @@ export function ItineraryView({
           </section>
         </div>
 
-        <div className="min-w-0 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-          <div className="xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto xl:pr-1">
+        <div className="hidden min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:block">
+          <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-1">
             <CompanionRail session={session} adjustmentPanel={adjustmentPanel} />
           </div>
         </div>
