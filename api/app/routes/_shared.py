@@ -185,9 +185,58 @@ def progress_payload(event: ProgressEvent) -> dict[str, object]:
     return {
         "stage": event.node,
         "status": status,
-        "message": f"{event.node} {event.status}",
+        "message": _progress_message(event),
         "payload": event.payload,
     }
+
+
+def _progress_message(event: ProgressEvent) -> str:
+    if event.status != "completed":
+        return f"{event.node} {event.status}"
+
+    quality = event.payload.get("quality", {})
+    if not isinstance(quality, dict):
+        quality = {}
+
+    if event.node == "discovery":
+        card_count = _quality_int(quality, "card_count")
+        source_note_count = _quality_int(quality, "source_note_count")
+        if card_count is not None and source_note_count is not None:
+            return (
+                f"已生成 {card_count} 张发现卡片，保留 {source_note_count} 条来源线索"
+            )
+        return "已完成发现卡片整理"
+
+    if event.node == "stay":
+        return "已选出住宿区域和备选方案"
+
+    if event.node == "transport":
+        return "已分析抵达、返程和市内交通方案"
+
+    if event.node == "planner":
+        day_count = _quality_int(quality, "day_count")
+        segment_count = _quality_int(quality, "segment_count")
+        if day_count is not None and segment_count is not None:
+            return f"已生成 {day_count} 天行程，包含 {segment_count} 个安排"
+        return "已生成每日行程"
+
+    if event.node == "validator":
+        issue_count = _quality_int(quality, "issue_count")
+        error_count = _quality_int(quality, "error_count")
+        if issue_count == 0:
+            return "检查完成，预算和节奏没有发现阻断问题"
+        if issue_count is not None and error_count is not None:
+            return f"检查完成，发现 {issue_count} 个问题，其中 {error_count} 个需要修正"
+        return "已完成预算与节奏检查"
+
+    return f"{event.node} {event.status}"
+
+
+def _quality_int(quality: dict[object, object], key: str) -> int | None:
+    value = quality.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 async def iter_progress_frames(

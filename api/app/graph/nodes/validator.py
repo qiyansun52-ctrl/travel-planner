@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.domain.validator import ValidatorContext, validate_itinerary
+from app.graph.agent_contracts import agent_progress_payload, validator_quality_report
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 
 
@@ -31,10 +32,12 @@ async def run_validator_node(state: PlanState) -> GraphState:
         ),
         "validator",
         "completed",
-        {
-            "issue_count": len(issues),
-            "error_count": sum(issue.severity == "error" for issue in issues),
-        },
+        agent_progress_payload(
+            "validator",
+            issue_count=len(issues),
+            error_count=sum(issue.severity == "error" for issue in issues),
+            quality=validator_quality_report(issues),
+        ),
     )
     new_event = updated.progress_events[-1]
     return GraphState(

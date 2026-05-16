@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.graph.agent_contracts import agent_progress_payload
 from app.graph.nodes.discovery import band
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 from app.models.schemas import (
@@ -21,7 +22,9 @@ async def run_stay_agent(session: PlanningSession) -> StayRecommendation:
         if session.discovery_state and session.discovery_state.payload
         else []
     )
-    primary_area = areas[0] if areas else _fallback_area("area_central", f"{city} central core")
+    primary_area = (
+        areas[0] if areas else _fallback_area("area_central", f"{city} central core")
+    )
     alternative_area = (
         areas[1]
         if len(areas) > 1
@@ -64,7 +67,23 @@ async def run_stay_node(state: PlanState) -> GraphState:
         parsed.model_copy(update={"stay_recommendation": stay}),
         "stay",
         "completed",
-        {"primary_area": stay.primary.area.id},
+        agent_progress_payload(
+            "stay",
+            primary_area=stay.primary.area.id,
+            alternative_count=len(stay.alternatives),
+            sample_hotel_count=sum(
+                len(option.sample_hotels)
+                for option in [
+                    stay.primary,
+                    *stay.alternatives,
+                ]
+            ),
+            quality={
+                "has_primary": True,
+                "has_alternatives": bool(stay.alternatives),
+                "has_user_override": stay.user_override_id is not None,
+            },
+        ),
     )
     new_event = updated.progress_events[-1]
     return GraphState(
@@ -93,5 +112,7 @@ def _fallback_area(id_: str, name: str, *, quiet: bool = False) -> AreaSummary:
             if quiet
             else "Balanced base for first-time planning."
         ),
-        center=Coordinate(lat=31.21 if quiet else 31.23, lng=121.43 if quiet else 121.47),
+        center=Coordinate(
+            lat=31.21 if quiet else 31.23, lng=121.43 if quiet else 121.47
+        ),
     )

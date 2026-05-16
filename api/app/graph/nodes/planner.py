@@ -7,6 +7,7 @@ import os
 from datetime import date, timedelta
 
 from app.domain.budget import sum_budget_bands, to_per_trip_band
+from app.graph.agent_contracts import agent_progress_payload, itinerary_quality_report
 from app.graph.nodes.discovery import band, budget_summary
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 from app.models.schemas import (
@@ -105,7 +106,9 @@ def active_stay_option(stay: StayRecommendation) -> StayOption:
 async def run_planner_node(state: PlanState) -> GraphState:
     parsed = validate_graph_state(state)
     stay = parsed.stay_recommendation or parsed.session.stay_recommendation
-    transport = parsed.transport_recommendation or parsed.session.transport_recommendation
+    transport = (
+        parsed.transport_recommendation or parsed.session.transport_recommendation
+    )
     if stay is None:
         raise ValueError("run_planner_node requires stay_recommendation")
     if transport is None:
@@ -122,7 +125,14 @@ async def run_planner_node(state: PlanState) -> GraphState:
         parsed.model_copy(update={"itinerary": itinerary}),
         "planner",
         "completed",
-        {"version": itinerary.version},
+        agent_progress_payload(
+            "planner",
+            version=itinerary.version,
+            quality=itinerary_quality_report(
+                itinerary,
+                expected_day_count=parsed.session.hard_constraints.duration_days,
+            ),
+        ),
     )
     new_event = updated.progress_events[-1]
     return GraphState(
@@ -159,7 +169,9 @@ def _build_days(
             _hotel_segment("09:00", "09:30", stay, "Start from the active stay area.")
         ]
         if first:
-            segments.append(_card_segment(first, "10:00", "12:00" if relaxed else "11:45"))
+            segments.append(
+                _card_segment(first, "10:00", "12:00" if relaxed else "11:45")
+            )
         segments.append(
             ItinerarySegment(
                 type="food",
@@ -171,7 +183,9 @@ def _build_days(
                     "Keep lunch flexible near the morning area instead of locking a "
                     "specific restaurant."
                 ),
-                cost_estimate=band(session.hard_constraints.currency, 80, 180, "per_party"),
+                cost_estimate=band(
+                    session.hard_constraints.currency, 80, 180, "per_party"
+                ),
             )
         )
         if second and not relaxed:
@@ -196,7 +210,9 @@ def _build_days(
                 place=None,
                 card_ref=None,
                 description="Return before dinner so the evening can stay light.",
-                cost_estimate=band(session.hard_constraints.currency, 20, 80, "per_party"),
+                cost_estimate=band(
+                    session.hard_constraints.currency, 20, 80, "per_party"
+                ),
             )
         )
         note = (
@@ -207,6 +223,7 @@ def _build_days(
         notes = [note]
         if validator_issues:
             notes.append("Corrective pass used validator errors as planning context.")
+        notes.extend(_reservation_notes([first, second if not relaxed else None]))
         days.append(
             ItineraryDay(
                 day_index=day_index,
@@ -217,6 +234,17 @@ def _build_days(
         )
 
     return days
+
+
+def _reservation_notes(cards: list[DiscoveryCard | None]) -> list[str]:
+    notes: list[str] = []
+    seen: set[str] = set()
+    for card in cards:
+        if card is None or card.id in seen or not card.reservation_hint:
+            continue
+        seen.add(card.id)
+        notes.append(f"Reservation check: {card.name} - {card.reservation_hint}")
+    return notes
 
 
 def _card_at(cards: list[DiscoveryCard], index: int) -> DiscoveryCard | None:
@@ -249,7 +277,9 @@ def _hotel_segment(
     )
 
 
-def _card_segment(card: DiscoveryCard, start_time: str, end_time: str) -> ItinerarySegment:
+def _card_segment(
+    card: DiscoveryCard, start_time: str, end_time: str
+) -> ItinerarySegment:
     return ItinerarySegment(
         type="attraction",
         start_time=start_time,
@@ -302,7 +332,9 @@ async def _enrich_days_with_routes(
                     previous_place_segment.end_time,
                     segment.start_time,
                 ):
-                    segments.append(_route_segment(previous_place_segment.end_time, route))
+                    segments.append(
+                        _route_segment(previous_place_segment.end_time, route)
+                    )
 
             segments.append(segment)
             previous_place_segment = segment
@@ -353,7 +385,9 @@ async def _safe_route_between(
         return None
 
 
-def _route_fits_gap(route: NormalizedRoute, start_time: str, next_start_time: str) -> bool:
+def _route_fits_gap(
+    route: NormalizedRoute, start_time: str, next_start_time: str
+) -> bool:
     gap_minutes = _minutes_between(start_time, next_start_time)
     if gap_minutes <= 0:
         return False
@@ -398,7 +432,9 @@ def _straight_line_distance_meters(
         math.sin(delta_lat / 2) ** 2
         + math.cos(from_lat) * math.cos(to_lat) * math.sin(delta_lng / 2) ** 2
     )
-    return radius_meters * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+    return (
+        radius_meters * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
+    )
 
 
 def _default_map_registry() -> TravelDataProviderRegistry | None:

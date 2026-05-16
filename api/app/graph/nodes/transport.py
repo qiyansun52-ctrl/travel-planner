@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.graph.agent_contracts import agent_progress_payload
 from app.graph.nodes.discovery import band
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 from app.models.schemas import (
@@ -71,7 +72,17 @@ async def run_transport_node(state: PlanState) -> GraphState:
         parsed.model_copy(update={"transport_recommendation": transport}),
         "transport",
         "completed",
-        {"arrival_mode": transport.arrival.mode},
+        agent_progress_payload(
+            "transport",
+            arrival_mode=transport.arrival.mode,
+            departure_mode=transport.departure.mode,
+            intracity_mode=transport.intracity.primary_mode,
+            quality={
+                "has_arrival_cost_band": transport.arrival.cost_band is not None,
+                "has_departure_cost_band": transport.departure.cost_band is not None,
+                "tradeoff_count": len(transport.tradeoffs),
+            },
+        ),
     )
     new_event = updated.progress_events[-1]
     return GraphState(

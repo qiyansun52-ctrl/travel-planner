@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from typing import Literal
 
 from app.domain.budget import classify_attraction_cost_signal
+from app.graph.agent_contracts import agent_progress_payload, discovery_quality_report
 from app.graph.state import GraphState, PlanState, append_progress, validate_graph_state
 from app.llm.client import LLMProvider, generate_structured
 from app.llm.cost_logger import LLMCostLogger
@@ -30,7 +31,10 @@ from app.providers.fixtures import (
     fixture_provider_for_country,
     fixture_source_note,
 )
-from app.providers.registry import TravelDataProviderRegistry, create_default_provider_registry
+from app.providers.registry import (
+    TravelDataProviderRegistry,
+    create_default_provider_registry,
+)
 from app.providers.search.tavily import TavilySearchProvider, build_search_queries
 from app.providers.types import (
     PlaceSearchRequest,
@@ -41,7 +45,9 @@ from app.providers.types import (
 )
 
 
-def compute_enrichment_status(card: DiscoveryCard) -> Literal["complete", "partial", "minimal"]:
+def compute_enrichment_status(
+    card: DiscoveryCard,
+) -> Literal["complete", "partial", "minimal"]:
     if card.place is None:
         return "minimal"
     if card.image_url and card.cost_estimate:
@@ -74,7 +80,9 @@ async def run_discovery_agent(
     enriched_cards = await _enrich_card_places(output.cards, session, map_registry)
     return output.model_copy(
         update={
-            "cards": [_normalize_discovery_card(card, session) for card in enriched_cards],
+            "cards": [
+                _normalize_discovery_card(card, session) for card in enriched_cards
+            ],
             "source_notes": _merge_source_notes(
                 _source_notes_from_search_results(search_results),
                 output.source_notes,
@@ -103,7 +111,12 @@ async def run_discovery_node(state: PlanState) -> GraphState:
         parsed.model_copy(update={"session": session, "discovery_output": output}),
         "discovery",
         "completed",
-        {"card_count": len(output.cards)},
+        agent_progress_payload(
+            "discovery",
+            card_count=len(output.cards),
+            source_note_count=len(output.source_notes),
+            quality=discovery_quality_report(output),
+        ),
     )
     new_event = updated.progress_events[-1]
     return GraphState(
@@ -160,7 +173,9 @@ def budget_summary(
 
 
 def _has_llm_api_key() -> bool:
-    return bool(os.environ.get("LLM_PROVIDER_API_KEY") or os.environ.get("GEMINI_API_KEY"))
+    return bool(
+        os.environ.get("LLM_PROVIDER_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    )
 
 
 def _build_discovery_prompt(
@@ -249,7 +264,9 @@ def _source_notes_from_search_results(results: list[SearchResult]) -> list[Sourc
         if result.source_note is not None:
             notes.append(result.source_note)
         elif result.url:
-            notes.append(SourceNote(provider="tavily", url=result.url, note=result.title))
+            notes.append(
+                SourceNote(provider="tavily", url=result.url, note=result.title)
+            )
     return notes
 
 
@@ -330,9 +347,7 @@ def _is_acceptable_place_match(
         return False
 
     candidate_text = " ".join(
-        value
-        for value in [place.name, place.address, place.category]
-        if value
+        value for value in [place.name, place.address, place.category] if value
     )
     return _text_matches_place_name(card.name, candidate_text)
 
@@ -347,8 +362,7 @@ def _text_matches_place_name(card_name: str, candidate_text: str) -> bool:
     if len(compact_candidate) >= 4 and compact_candidate in compact_card:
         return True
     return bool(
-        _significant_match_tokens(card_name)
-        & _significant_match_tokens(candidate_text)
+        _significant_match_tokens(card_name) & _significant_match_tokens(candidate_text)
     )
 
 
@@ -400,7 +414,9 @@ def _has_map_provider_key() -> bool:
     return bool(os.environ.get("AMAP_API_KEY") or os.environ.get("MAPBOX_ACCESS_TOKEN"))
 
 
-def _normalize_discovery_card(card: DiscoveryCard, session: PlanningSession) -> DiscoveryCard:
+def _normalize_discovery_card(
+    card: DiscoveryCard, session: PlanningSession
+) -> DiscoveryCard:
     normalized = card.model_copy(
         update={
             "image_url": _usable_image_url(card.image_url),

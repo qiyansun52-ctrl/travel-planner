@@ -20,7 +20,12 @@ from app.graph.nodes.planner import (
 from app.graph.nodes.stay import run_stay_agent, run_stay_node
 from app.graph.nodes.transport import run_transport_agent, run_transport_node
 from app.graph.nodes.validator import run_validator_node
-from app.graph.state import PlanState, append_progress, graph_input_from_state, validate_graph_state
+from app.graph.state import (
+    PlanState,
+    append_progress,
+    graph_input_from_state,
+    validate_graph_state,
+)
 from app.models.schemas import (
     BudgetBand,
     Coordinate,
@@ -147,7 +152,9 @@ def test_compute_enrichment_status_classifies_enrichment_depth() -> None:
     complete = fixtures.discovery_card()
     assert compute_enrichment_status(complete) == "partial"
 
-    complete = complete.model_copy(update={"image_url": "https://example.com/photo.jpg"})
+    complete = complete.model_copy(
+        update={"image_url": "https://example.com/photo.jpg"}
+    )
     assert compute_enrichment_status(complete) == "complete"
 
     minimal = complete.model_copy(update={"place": None})
@@ -155,7 +162,9 @@ def test_compute_enrichment_status_classifies_enrichment_depth() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_discovery_agent_fixture_returns_cards_budget_and_cost_signals() -> None:
+async def test_run_discovery_agent_fixture_returns_cards_budget_and_cost_signals() -> (
+    None
+):
     output = await run_discovery_agent(fixtures.session(), fixture_mode=True)
 
     assert len(output.cards) >= 3
@@ -181,6 +190,8 @@ async def test_run_discovery_node_returns_patch_and_progress() -> None:
     cards = patch["discovery_output"]["cards"]
     assert patch["progress_events"][-1]["node"] == "discovery"
     assert patch["progress_events"][-1]["payload"]["card_count"] == len(cards)
+    assert patch["progress_events"][-1]["payload"]["agent"]["stage"] == "discovery"
+    assert patch["progress_events"][-1]["payload"]["quality"]["min_cards_met"] is True
 
 
 @pytest.mark.asyncio
@@ -210,7 +221,9 @@ async def test_run_discovery_agent_uses_fixture_when_keys_missing(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_run_discovery_agent_live_path_calls_llm_and_normalizes(monkeypatch) -> None:
+async def test_run_discovery_agent_live_path_calls_llm_and_normalizes(
+    monkeypatch,
+) -> None:
     recorded = {}
     card = fixtures.discovery_card().model_copy(
         update={
@@ -507,7 +520,9 @@ async def test_run_stay_agent_uses_discovery_area_summaries() -> None:
 
 @pytest.mark.asyncio
 async def test_run_stay_agent_fallback_areas_and_override_preservation() -> None:
-    existing = fixtures.stay_recommendation().model_copy(update={"user_override_id": "stay_alt_value"})
+    existing = fixtures.stay_recommendation().model_copy(
+        update={"user_override_id": "stay_alt_value"}
+    )
     session = fixtures.session(with_discovery=False).model_copy(
         update={"stay_recommendation": existing}
     )
@@ -526,11 +541,14 @@ async def test_run_stay_node_returns_patch_and_progress() -> None:
     assert patch["stay_recommendation"]
     assert patch["progress_events"][-1]["node"] == "stay"
     assert patch["progress_events"][-1]["payload"]["primary_area"] == "area_central"
+    assert patch["progress_events"][-1]["payload"]["agent"]["stage"] == "stay"
 
 
 @pytest.mark.asyncio
 async def test_node_patch_returns_only_new_progress_event() -> None:
-    state = append_progress(PlanState(session=fixtures.session()), "discovery", "completed")
+    state = append_progress(
+        PlanState(session=fixtures.session()), "discovery", "completed"
+    )
 
     patch = await run_stay_node(state)
 
@@ -573,6 +591,7 @@ async def test_run_transport_node_returns_patch_and_progress() -> None:
     assert patch["transport_recommendation"]
     assert patch["progress_events"][-1]["node"] == "transport"
     assert patch["progress_events"][-1]["payload"]["arrival_mode"] == "rail"
+    assert patch["progress_events"][-1]["payload"]["agent"]["stage"] == "transport"
 
 
 @pytest.mark.asyncio
@@ -602,9 +621,13 @@ async def test_run_planner_agent_converts_budget_bands_to_per_trip() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_planner_agent_falls_back_to_first_three_cards_when_none_selected() -> None:
+async def test_run_planner_agent_falls_back_to_first_three_cards_when_none_selected() -> (
+    None
+):
     session = fixtures.session()
-    discovery_state = session.discovery_state.model_copy(update={"selected_card_ids": []})
+    discovery_state = session.discovery_state.model_copy(
+        update={"selected_card_ids": []}
+    )
     session = session.model_copy(update={"discovery_state": discovery_state})
 
     itinerary = await run_planner_agent(
@@ -650,7 +673,13 @@ async def test_run_planner_agent_builds_required_segment_types() -> None:
     )
 
     segment_types = {segment.type for segment in itinerary.days[0].segments}
-    assert {"hotel_checkin", "attraction", "food", "rest", "hotel_return"} <= segment_types
+    assert {
+        "hotel_checkin",
+        "attraction",
+        "food",
+        "rest",
+        "hotel_return",
+    } <= segment_types
 
 
 @pytest.mark.asyncio
@@ -673,14 +702,14 @@ async def test_run_planner_agent_does_not_use_default_registry_without_opt_in(
     )
 
     assert all(
-        segment.type != "transit"
-        for day in itinerary.days
-        for segment in day.segments
+        segment.type != "transit" for day in itinerary.days for segment in day.segments
     )
 
 
 @pytest.mark.asyncio
-async def test_run_planner_agent_adds_route_transit_segments_when_registry_available() -> None:
+async def test_run_planner_agent_adds_route_transit_segments_when_registry_available() -> (
+    None
+):
     registry = FakeRouteRegistry()
 
     itinerary = await run_planner_agent(
@@ -703,7 +732,9 @@ async def test_run_planner_agent_adds_route_transit_segments_when_registry_avail
 
 
 @pytest.mark.asyncio
-async def test_run_planner_agent_skips_route_transit_when_duration_exceeds_gap() -> None:
+async def test_run_planner_agent_skips_route_transit_when_duration_exceeds_gap() -> (
+    None
+):
     itinerary = await run_planner_agent(
         fixtures.session(),
         fixtures.stay_recommendation(),
@@ -712,9 +743,7 @@ async def test_run_planner_agent_skips_route_transit_when_duration_exceeds_gap()
     )
 
     assert all(
-        segment.type != "transit"
-        for day in itinerary.days
-        for segment in day.segments
+        segment.type != "transit" for day in itinerary.days for segment in day.segments
     )
 
 
@@ -744,9 +773,7 @@ async def test_run_planner_agent_keeps_itinerary_when_route_enrichment_fails() -
     )
 
     assert all(
-        segment.type != "transit"
-        for day in itinerary.days
-        for segment in day.segments
+        segment.type != "transit" for day in itinerary.days for segment in day.segments
     )
 
 
@@ -770,7 +797,38 @@ async def test_run_planner_agent_adds_corrective_note_for_validator_context() ->
         [fixtures.validator_error()],
     )
 
-    assert "Corrective pass used validator errors as planning context." in itinerary.days[0].notes
+    assert (
+        "Corrective pass used validator errors as planning context."
+        in itinerary.days[0].notes
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_planner_agent_carries_reservation_hints_into_day_notes() -> None:
+    session = fixtures.session()
+    museum = fixtures.discovery_card(
+        "disc_museum",
+        "上海 museum afternoon",
+    ).model_copy(update={"reservation_hint": "Reserve a timed entry before weekends."})
+    discovery = fixtures.discovery_output().model_copy(update={"cards": [museum]})
+    session = session.model_copy(
+        update={
+            "discovery_state": session.discovery_state.model_copy(
+                update={"payload": discovery, "selected_card_ids": [museum.id]}
+            )
+        }
+    )
+
+    itinerary = await run_planner_agent(
+        session,
+        fixtures.stay_recommendation(),
+        fixtures.transport_recommendation(),
+    )
+
+    assert (
+        "Reservation check: 上海 museum afternoon - Reserve a timed entry before weekends."
+        in itinerary.days[0].notes
+    )
 
 
 @pytest.mark.asyncio
@@ -785,7 +843,12 @@ async def test_run_planner_node_returns_patch_and_progress() -> None:
 
     assert patch["itinerary"]
     assert patch["progress_events"][-1]["node"] == "planner"
-    assert patch["progress_events"][-1]["payload"]["version"] == patch["itinerary"]["version"]
+    assert (
+        patch["progress_events"][-1]["payload"]["version"]
+        == patch["itinerary"]["version"]
+    )
+    assert patch["progress_events"][-1]["payload"]["agent"]["stage"] == "planner"
+    assert patch["progress_events"][-1]["payload"]["quality"]["day_count"] == 3
 
 
 @pytest.mark.asyncio
@@ -823,7 +886,9 @@ async def test_run_planner_node_requires_stay_recommendation() -> None:
         transport_recommendation=fixtures.transport_recommendation(),
     )
 
-    with pytest.raises(ValueError, match="run_planner_node requires stay_recommendation"):
+    with pytest.raises(
+        ValueError, match="run_planner_node requires stay_recommendation"
+    ):
         await run_planner_node(state)
 
 
@@ -834,7 +899,9 @@ async def test_run_planner_node_requires_transport_recommendation() -> None:
         stay_recommendation=fixtures.stay_recommendation(),
     )
 
-    with pytest.raises(ValueError, match="run_planner_node requires transport_recommendation"):
+    with pytest.raises(
+        ValueError, match="run_planner_node requires transport_recommendation"
+    ):
         await run_planner_node(state)
 
 
@@ -849,7 +916,9 @@ def test_active_stay_option_uses_matching_user_override() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_validator_node_attaches_issues_to_state_patch_and_itinerary() -> None:
+async def test_run_validator_node_attaches_issues_to_state_patch_and_itinerary() -> (
+    None
+):
     session = fixtures.session()
     itinerary = fixtures.itinerary(total_high=session.hard_constraints.total_budget * 2)
     state = PlanState(session=session, itinerary=itinerary)
@@ -864,6 +933,10 @@ async def test_run_validator_node_attaches_issues_to_state_patch_and_itinerary()
     )
     assert patch["progress_events"][-1]["payload"]["error_count"] == len(
         [issue for issue in patch["validator_issues"] if issue["severity"] == "error"]
+    )
+    assert patch["progress_events"][-1]["payload"]["agent"]["stage"] == "validator"
+    assert patch["progress_events"][-1]["payload"]["quality"]["issue_count"] == len(
+        patch["validator_issues"]
     )
 
 
